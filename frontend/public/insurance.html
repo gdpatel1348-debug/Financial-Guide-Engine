@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Insurance & Protection — Financial Guidance Engine</title>
+  <meta name="description" content="Manage life and health insurance policies and evaluate risk protection adequacy." />
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <style>
+    .insurance-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); margin-bottom: var(--sp-6); }
+    .protection-map-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-6); margin-bottom: var(--sp-6); }
+    .protection-card {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border-2);
+      border-radius: var(--r-md);
+      padding: var(--sp-5);
+    }
+    .prot-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-3); }
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar" aria-label="Main navigation">
+  <a class="navbar-brand" href="/dashboard.html">
+    <div class="navbar-logo">FG</div>
+    Financial Guidance Engine
+  </a>
+  <div class="navbar-actions">
+    <span id="user-chip" class="text-sm text-muted"></span>
+    <button id="logout-btn" class="btn btn-ghost btn-sm">Sign out</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar" aria-label="Sidebar navigation"></aside>
+
+  <main class="main-content" aria-label="Insurance workspace">
+    <div id="loading-view" class="loading-overlay">
+      <div class="spinner"></div>
+      <span>Loading protection profile…</span>
+    </div>
+
+    <div id="content-view" class="hidden">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+          <h1 style="font-size:1.4rem">🛡️ Insurance & Risk Protection</h1>
+          <p class="text-sm text-muted mt-1">Review pure term cover, health insurance adequacy, and liability safety buffers.</p>
+        </div>
+        <div class="flex gap-3">
+          <button id="add-policy-btn" class="btn btn-primary">➕ Add Policy</button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="insurance-kpis">
+        <div class="card">
+          <div class="card-title">Pure Term Life Cover</div>
+          <div class="card-value text-accent" id="kpi-term-cover">₹0</div>
+          <div class="card-sub" id="kpi-term-sub">0 policies active</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Health / Medical Cover</div>
+          <div class="card-value text-primary" id="kpi-health-cover">₹0</div>
+          <div class="card-sub" id="kpi-health-sub">0 policies active</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Total Annual Premium</div>
+          <div class="card-value" id="kpi-annual-premium">₹0</div>
+          <div class="card-sub">Protection outflow</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Reference Benchmark</div>
+          <div class="card-value text-warn" id="kpi-term-benchmark">₹0</div>
+          <div class="card-sub">15x gross annual income</div>
+        </div>
+      </div>
+
+      <!-- Protection Map -->
+      <div class="protection-map-grid">
+        <!-- Life Protection Card -->
+        <div class="card">
+          <div class="prot-header">
+            <h3 style="font-size:1.05rem;font-weight:600">Life Protection Benchmark</h3>
+            <span id="life-adequacy-tag" class="label-tag blue">Evaluating</span>
+          </div>
+          <p class="text-xs text-muted mb-3">Comparing pure term sum assured against the standard 15x gross income planning benchmark.</p>
+          <div class="nw-bar-track lg">
+            <div id="life-progress-fill" class="nw-bar-fill blue" style="width:0%"></div>
+          </div>
+          <div class="flex justify-between text-xs text-muted mt-2">
+            <span>Entered Pure Term: <strong id="map-term-val">₹0</strong></span>
+            <span>Target Benchmark: <strong id="map-bench-val">₹0</strong></span>
+          </div>
+          <div class="text-xs text-muted mt-4" id="life-guidance-note">
+            Note: The 15x multiple is a reference guideline. Actual requirements depend on family dependents, outstanding liabilities, and existing liquid assets.
+          </div>
+        </div>
+
+        <!-- Debt & Dependents Context -->
+        <div class="card">
+          <div class="prot-header">
+            <h3 style="font-size:1.05rem;font-weight:600">Family & Debt Protection Buffer</h3>
+            <span class="label-tag green">Context</span>
+          </div>
+          <div class="protection-card mt-2">
+            <div class="flex justify-between items-center py-1">
+              <span class="text-xs text-muted">Family Dependents:</span>
+              <strong class="text-sm" id="ctx-dependents">0</strong>
+            </div>
+            <div class="flex justify-between items-center py-1 border-t border-color-border">
+              <span class="text-xs text-muted">Total Outstanding Liabilities:</span>
+              <strong class="text-sm text-danger" id="ctx-liabilities">₹0</strong>
+            </div>
+            <div class="flex justify-between items-center py-1 border-t border-color-border">
+              <span class="text-xs text-muted">Net Debt Protection Buffer:</span>
+              <strong class="text-sm text-accent" id="ctx-buffer">₹0</strong>
+            </div>
+          </div>
+          <p class="text-xs text-muted mt-3">
+            A healthy term insurance policy provides sufficient liquidity to completely clear outstanding liabilities while funding family living expenses.
+          </p>
+        </div>
+      </div>
+
+      <!-- Policies Table -->
+      <div class="card">
+        <h3 style="font-size:1.05rem;font-weight:600;margin-bottom:var(--sp-4);">Entered Insurance Policies</h3>
+        <div style="overflow-x:auto;">
+          <table class="chart-data-table">
+            <thead>
+              <tr>
+                <th>Policy Name / Description</th>
+                <th>Type</th>
+                <th>Pure Term?</th>
+                <th>Insurer</th>
+                <th class="text-right">Sum Assured</th>
+                <th class="text-right">Annual Premium</th>
+                <th class="text-center">Maturity</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="insurance-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Add/Edit Policy Modal -->
+<div id="policy-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-policy-title">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-policy-title" style="font-size:1.15rem;font-weight:700">Add Policy</h2>
+      <button id="modal-close-btn" class="btn btn-ghost btn-sm" aria-label="Close">✕</button>
+    </div>
+    <form id="policy-form">
+      <input type="hidden" id="p-id" />
+      <div class="form-row">
+        <div class="form-group">
+          <label for="p-type" class="form-label required">Policy Type</label>
+          <select id="p-type" class="form-select" required>
+            <option value="TERM">Life — Pure Term</option>
+            <option value="HEALTH">Health / Mediclaim</option>
+            <option value="ENDOWMENT">Endowment / Traditional</option>
+            <option value="ULIP">ULIP / Investment-Linked</option>
+            <option value="CRITICAL_ILLNESS">Critical Illness</option>
+            <option value="OTHER">Other Policy</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="p-name" class="form-label required">Policy Name / Plan</label>
+          <input type="text" id="p-name" class="form-input" placeholder="e.g. HDFC Click 2 Protect 3D" required />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="p-insurer" class="form-label">Insurance Provider</label>
+          <input type="text" id="p-insurer" class="form-input" placeholder="e.g. HDFC Life" />
+        </div>
+        <div class="form-group">
+          <label for="p-sum" class="form-label required">Sum Assured (₹)</label>
+          <input type="number" id="p-sum" class="form-input" placeholder="e.g. 10000000" min="0" required />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="p-premium" class="form-label required">Annual Premium (₹)</label>
+          <input type="number" id="p-premium" class="form-input" placeholder="e.g. 15000" min="0" required />
+        </div>
+        <div class="form-group">
+          <label for="p-maturity" class="form-label">Maturity / Expiry Year</label>
+          <input type="number" id="p-maturity" class="form-input" placeholder="2055" min="2026" max="2090" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="flex items-center gap-2 text-sm mt-2">
+          <input type="checkbox" id="p-is-term" checked />
+          <span>Is this a <strong>Pure Term</strong> life insurance policy? (Zero investment component)</span>
+        </label>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="modal-cancel-btn" class="btn btn-ghost">Cancel</button>
+        <button type="submit" id="modal-save-btn" class="btn btn-primary">Save Policy</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { api } from '/assets/js/api.js';
+import { requireAuth, renderUserChip, logout } from '/assets/js/auth.js';
+import { formatINR, toast } from '/assets/js/format.js';
+import { renderAppSidebar } from '/assets/js/components/sidebar.js';
+
+const user = await requireAuth();
+renderUserChip(user);
+document.getElementById('logout-btn').addEventListener('click', () => logout());
+renderAppSidebar({ activeKey: 'insurance' });
+
+const loadingView = document.getElementById('loading-view');
+const contentView = document.getElementById('content-view');
+const modal = document.getElementById('policy-modal');
+const form = document.getElementById('policy-form');
+
+let policiesList = [];
+let userProfile = null;
+let userIncome = null;
+let userLiabilities = [];
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function loadData() {
+  loadingView.classList.remove('hidden');
+  contentView.classList.add('hidden');
+
+  try {
+    const [policies, profile, income, liabilities] = await Promise.all([
+      api.insurance.list(),
+      api.profile.get().catch(() => null),
+      api.income.get().catch(() => null),
+      api.liabilities.list().catch(() => [])
+    ]);
+
+    policiesList = policies || [];
+    userProfile = profile || {};
+    userIncome = income || {};
+    userLiabilities = liabilities || [];
+
+    render();
+  } catch (err) {
+    toast(err.message || 'Failed to load insurance policies.', 'error');
+  } finally {
+    loadingView.classList.add('hidden');
+    contentView.classList.remove('hidden');
+  }
+}
+
+function render() {
+  const termPolicies = policiesList.filter(p => p.is_pure_term && p.is_active);
+  const healthPolicies = policiesList.filter(p => (p.policy_type || '').toUpperCase() === 'HEALTH' && p.is_active);
+
+  const totalTerm = termPolicies.reduce((sum, p) => sum + Number(p.sum_assured || 0), 0);
+  const totalHealth = healthPolicies.reduce((sum, p) => sum + Number(p.sum_assured || 0), 0);
+  const totalPremium = policiesList.reduce((sum, p) => sum + Number(p.annual_premium || 0), 0);
+
+  const grossAnnual = Number(userIncome.gross_annual || 0);
+  const targetTerm = grossAnnual * 15;
+  const totalDebt = userLiabilities.reduce((sum, l) => sum + Number(l.outstanding || 0), 0);
+  const netBuffer = totalTerm - totalDebt;
+
+  document.getElementById('kpi-term-cover').textContent = formatINR(totalTerm);
+  document.getElementById('kpi-term-sub').textContent = `${termPolicies.length} pure term policies`;
+  document.getElementById('kpi-health-cover').textContent = formatINR(totalHealth);
+  document.getElementById('kpi-health-sub').textContent = `${healthPolicies.length} health policies`;
+  document.getElementById('kpi-annual-premium').textContent = `${formatINR(totalPremium)}/yr`;
+  document.getElementById('kpi-term-benchmark').textContent = formatINR(targetTerm);
+
+  // Map progress
+  const termPct = targetTerm > 0 ? Math.min(100, Math.round((totalTerm / targetTerm) * 100)) : 0;
+  const fillEl = document.getElementById('life-progress-fill');
+  fillEl.style.width = `${termPct}%`;
+  fillEl.className = `nw-bar-fill ${termPct >= 100 ? 'green' : termPct >= 50 ? 'amber' : 'red'}`;
+
+  document.getElementById('map-term-val').textContent = formatINR(totalTerm);
+  document.getElementById('map-bench-val').textContent = formatINR(targetTerm);
+
+  const tagEl = document.getElementById('life-adequacy-tag');
+  if (policiesList.length === 0) {
+    tagEl.className = 'label-tag blue';
+    tagEl.textContent = 'Information Needed';
+  } else if (totalTerm >= targetTerm && targetTerm > 0) {
+    tagEl.className = 'label-tag green';
+    tagEl.textContent = 'Adequate';
+  } else {
+    tagEl.className = 'label-tag yellow';
+    tagEl.textContent = 'Review Recommended';
+  }
+
+  // Debt & dependents context
+  document.getElementById('ctx-dependents').textContent = `${userProfile.dependents || 0} dependent(s)`;
+  document.getElementById('ctx-liabilities').textContent = formatINR(totalDebt);
+  document.getElementById('ctx-buffer').textContent = netBuffer >= 0 ? `+${formatINR(netBuffer)} (Surplus)` : `-${formatINR(Math.abs(netBuffer))} (Deficit)`;
+  document.getElementById('ctx-buffer').style.color = netBuffer >= 0 ? 'var(--color-accent)' : 'var(--color-danger)';
+
+  // Table
+  const tbody = document.getElementById('insurance-table-body');
+  if (policiesList.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-6 text-muted">
+          No insurance information has been entered yet. Add policy details for a more meaningful review.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = policiesList.map(p => `
+    <tr>
+      <td><strong>${escHtml(p.policy_name || 'Insurance Policy')}</strong></td>
+      <td><span class="badge">${escHtml(p.policy_type)}</span></td>
+      <td>${p.is_pure_term ? '<span class="label-tag green">Yes</span>' : '<span class="label-tag yellow">No</span>'}</td>
+      <td>${escHtml(p.insurer || '—')}</td>
+      <td class="text-right text-mono font-semibold">${formatINR(p.sum_assured)}</td>
+      <td class="text-right text-mono text-muted">${formatINR(p.annual_premium)}/yr</td>
+      <td class="text-center">${escHtml(p.maturity_year || '—')}</td>
+      <td class="text-center">
+        <button class="btn btn-ghost btn-sm edit-policy-btn" data-id="${escHtml(p.id)}">✏️</button>
+        <button class="btn btn-ghost btn-sm delete-policy-btn text-danger" data-id="${escHtml(p.id)}">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+
+  document.querySelectorAll('.edit-policy-btn').forEach(btn => {
+    btn.addEventListener('click', () => openEditModal(btn.dataset.id));
+  });
+  document.querySelectorAll('.delete-policy-btn').forEach(btn => {
+    btn.addEventListener('click', () => deletePolicy(btn.dataset.id));
+  });
+}
+
+function openAddModal() {
+  document.getElementById('modal-policy-title').textContent = 'Add Policy';
+  document.getElementById('p-id').value = '';
+  document.getElementById('p-type').value = 'TERM';
+  document.getElementById('p-name').value = '';
+  document.getElementById('p-insurer').value = '';
+  document.getElementById('p-sum').value = '';
+  document.getElementById('p-premium').value = '';
+  document.getElementById('p-maturity').value = '';
+  document.getElementById('p-is-term').checked = true;
+  modal.classList.remove('hidden');
+}
+
+function openEditModal(policyId) {
+  const p = policiesList.find(item => item.id === policyId);
+  if (!p) return;
+
+  document.getElementById('modal-policy-title').textContent = 'Edit Policy';
+  document.getElementById('p-id').value = p.id;
+  document.getElementById('p-type').value = p.policy_type || 'TERM';
+  document.getElementById('p-name').value = p.policy_name || '';
+  document.getElementById('p-insurer').value = p.insurer || '';
+  document.getElementById('p-sum').value = p.sum_assured || '';
+  document.getElementById('p-premium').value = p.annual_premium || '';
+  document.getElementById('p-maturity').value = p.maturity_year || '';
+  document.getElementById('p-is-term').checked = Boolean(p.is_pure_term);
+  modal.classList.remove('hidden');
+}
+
+function closeModal() {
+  modal.classList.add('hidden');
+}
+
+async function deletePolicy(id) {
+  if (!confirm('Are you sure you want to delete this policy?')) return;
+  try {
+    await api.insurance.remove(id);
+    toast('Policy deleted successfully.', 'success');
+    await loadData();
+  } catch (err) {
+    toast(err.message || 'Failed to delete policy.', 'error');
+  }
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('p-id').value;
+  const payload = {
+    policyType: document.getElementById('p-type').value,
+    policyName: document.getElementById('p-name').value,
+    insurer: document.getElementById('p-insurer').value,
+    sumAssured: Number(document.getElementById('p-sum').value),
+    annualPremium: Number(document.getElementById('p-premium').value),
+    maturityYear: Number(document.getElementById('p-maturity').value) || null,
+    isPureTerm: document.getElementById('p-is-term').checked,
+    isActive: true
+  };
+
+  try {
+    if (id) {
+      await api.insurance.update(id, payload);
+      toast('Policy updated successfully.', 'success');
+    } else {
+      await api.insurance.create(payload);
+      toast('Policy added successfully.', 'success');
+    }
+    closeModal();
+    await loadData();
+  } catch (err) {
+    toast(err.message || 'Failed to save policy.', 'error');
+  }
+});
+
+document.getElementById('add-policy-btn').addEventListener('click', openAddModal);
+document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
+
+await loadData();
+</script>
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scenario Comparison — Financial Guidance Engine</title>
+  <meta name="description" content="Simulate what-if financial scenarios without altering saved data." />
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <style>
+    .scenario-grid { display: grid; grid-template-columns: 320px 1fr; gap: var(--sp-6); margin-bottom: var(--sp-6); }
+    .scenario-panel {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-6);
+    }
+    .compare-cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-4); margin-bottom: var(--sp-6); }
+    .compare-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-5);
+    }
+    .compare-val-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; }
+    .compare-diff { font-size: 0.82rem; font-weight: 600; }
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar" aria-label="Main navigation">
+  <a class="navbar-brand" href="/dashboard.html">
+    <div class="navbar-logo">FG</div>
+    Financial Guidance Engine
+  </a>
+  <div class="navbar-actions">
+    <span id="user-chip" class="text-sm text-muted"></span>
+    <button id="logout-btn" class="btn btn-ghost btn-sm">Sign out</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar" aria-label="Sidebar navigation"></aside>
+
+  <main class="main-content" aria-label="Scenario simulator">
+    <div id="loading-view" class="loading-overlay">
+      <div class="spinner"></div>
+      <span>Loading scenario simulator…</span>
+    </div>
+
+    <div id="content-view" class="hidden">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+          <h1 style="font-size:1.4rem">⚖️ Scenario Comparison & What-If Simulator</h1>
+          <p class="text-sm text-muted mt-1">Test adjustments to retirement age, savings rate, and inflation without changing your saved profile.</p>
+        </div>
+        <div class="flex gap-2">
+          <button id="reset-scenario-btn" class="btn btn-ghost btn-sm">🔄 Reset to Baseline</button>
+          <button id="run-sim-btn" class="btn btn-primary btn-sm">⚡ Run Simulation</button>
+        </div>
+      </div>
+
+      <!-- Main Layout -->
+      <div class="scenario-grid">
+        <!-- Controls Panel -->
+        <div class="scenario-panel">
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:var(--sp-4);">Scenario Levers</h3>
+          <form id="scenario-form">
+            <div class="form-group mb-4">
+              <label for="sc-retire-age" class="form-label">Retirement Target Age</label>
+              <input type="number" id="sc-retire-age" class="form-input" min="40" max="80" value="60" />
+              <span class="form-hint">Baseline retirement age.</span>
+            </div>
+
+            <div class="form-group mb-4">
+              <label for="sc-extra-sip" class="form-label">Additional Monthly Savings (₹)</label>
+              <input type="number" id="sc-extra-sip" class="form-input" min="0" step="5000" value="10000" />
+              <span class="form-hint">Extra monthly amount directed to equity growth.</span>
+            </div>
+
+            <div class="form-group mb-4">
+              <label for="sc-equity-return" class="form-label">Equity Expected Return (%)</label>
+              <input type="number" id="sc-equity-return" class="form-input" min="4" max="25" step="0.5" value="12" />
+            </div>
+
+            <div class="form-group mb-4">
+              <label for="sc-inflation" class="form-label">General Inflation Rate (%)</label>
+              <input type="number" id="sc-inflation" class="form-input" min="3" max="15" step="0.5" value="6" />
+            </div>
+
+            <div class="form-group mb-4">
+              <label for="sc-post-retire-return" class="form-label">Post-Retirement Return (%)</label>
+              <input type="number" id="sc-post-retire-return" class="form-input" min="3" max="15" step="0.5" value="7" />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-full mt-2">Recompute Scenario</button>
+          </form>
+        </div>
+
+        <!-- Comparison Display -->
+        <div>
+          <!-- Comparative Metric Cards -->
+          <div class="compare-cards-grid">
+            <div class="compare-card">
+              <div class="card-title">Total Goal Shortfall</div>
+              <div class="compare-val-row">
+                <div>
+                  <span class="text-xs text-muted">Baseline:</span>
+                  <div class="text-mono font-semibold" id="base-shortfall">₹0</div>
+                </div>
+                <div>
+                  <span class="text-xs text-accent">Scenario:</span>
+                  <div class="text-mono font-bold text-accent" id="sc-shortfall">₹0</div>
+                </div>
+              </div>
+              <div class="compare-diff mt-2" id="diff-shortfall">—</div>
+            </div>
+
+            <div class="compare-card">
+              <div class="card-title">Indicative Monthly SIP</div>
+              <div class="compare-val-row">
+                <div>
+                  <span class="text-xs text-muted">Baseline:</span>
+                  <div class="text-mono font-semibold" id="base-sip">₹0/mo</div>
+                </div>
+                <div>
+                  <span class="text-xs text-accent">Scenario:</span>
+                  <div class="text-mono font-bold text-accent" id="sc-sip">₹0/mo</div>
+                </div>
+              </div>
+              <div class="compare-diff mt-2" id="diff-sip">—</div>
+            </div>
+
+            <div class="compare-card">
+              <div class="card-title">Net Discretionary Savings</div>
+              <div class="compare-val-row">
+                <div>
+                  <span class="text-xs text-muted">Baseline:</span>
+                  <div class="text-mono font-semibold" id="base-savings">₹0</div>
+                </div>
+                <div>
+                  <span class="text-xs text-accent">Scenario:</span>
+                  <div class="text-mono font-bold text-accent" id="sc-savings">₹0</div>
+                </div>
+              </div>
+              <div class="compare-diff mt-2" id="diff-savings">—</div>
+            </div>
+
+            <div class="compare-card">
+              <div class="card-title">Estimated Tax (Opted Regime)</div>
+              <div class="compare-val-row">
+                <div>
+                  <span class="text-xs text-muted">Baseline:</span>
+                  <div class="text-mono font-semibold" id="base-tax">₹0</div>
+                </div>
+                <div>
+                  <span class="text-xs text-accent">Scenario:</span>
+                  <div class="text-mono font-bold text-accent" id="sc-tax">₹0</div>
+                </div>
+              </div>
+              <div class="compare-diff mt-2" id="diff-tax">—</div>
+            </div>
+          </div>
+
+          <!-- Scenario Insights Card -->
+          <div class="card mb-6">
+            <h3 style="font-size:1.05rem;font-weight:600">💡 Scenario Analysis Insights</h3>
+            <div id="scenario-insights" class="text-sm text-muted mt-3">
+              Running simulation against pure financial engine…
+            </div>
+          </div>
+
+          <!-- Disclaimers -->
+          <div class="alert alert-info">
+            <div>
+              <strong>Pure Simulation Mode.</strong> Scenario computations are sandbox estimates generated on the fly.
+              Your saved profile, active assets, and historical plan snapshots are never mutated.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { api } from '/assets/js/api.js';
+import { requireAuth, renderUserChip, logout } from '/assets/js/auth.js';
+import { formatINR, toast } from '/assets/js/format.js';
+import { renderAppSidebar } from '/assets/js/components/sidebar.js';
+
+const user = await requireAuth();
+renderUserChip(user);
+document.getElementById('logout-btn').addEventListener('click', () => logout());
+renderAppSidebar({ activeKey: 'scenarios' });
+
+const loadingView = document.getElementById('loading-view');
+const contentView = document.getElementById('content-view');
+
+let baselinePlan = null;
+
+async function load() {
+  loadingView.classList.remove('hidden');
+  contentView.classList.add('hidden');
+
+  try {
+    const history = await api.analysis.history();
+    if (history && history.length > 0) {
+      baselinePlan = await api.analysis.get(history[0].id);
+    } else {
+      // Run baseline
+      const res = await api.analysis.run();
+      baselinePlan = await api.analysis.get(res.planRun.id);
+    }
+
+    // Set baseline retirement age in input
+    const profile = await api.profile.get().catch(() => ({}));
+    if (profile?.retirement_age) {
+      document.getElementById('sc-retire-age').value = profile.retirement_age;
+    }
+
+    await runSimulation();
+  } catch (err) {
+    toast(err.message || 'Failed to initialize scenario simulator.', 'error');
+  } finally {
+    loadingView.classList.add('hidden');
+    contentView.classList.remove('hidden');
+  }
+}
+
+async function runSimulation() {
+  const overrides = {
+    retirementAge: Number(document.getElementById('sc-retire-age').value),
+    monthlyExtraSavings: Number(document.getElementById('sc-extra-sip').value || 0),
+    returnEquity: Number(document.getElementById('sc-equity-return').value),
+    inflationGeneral: Number(document.getElementById('sc-inflation').value),
+    postRetirementReturn: Number(document.getElementById('sc-post-retire-return').value)
+  };
+
+  try {
+    const simRes = await api.analysis.scenario(overrides);
+    const scOut = simRes.outputSnapshot;
+    const baseSummary = baselinePlan?.summary || {};
+
+    const baseShortfall = Number(baseSummary.totalShortfall || 0);
+    const scShortfall = Number(scOut.summary?.totalShortfall || 0);
+    const diffShortfall = scShortfall - baseShortfall;
+
+    const baseSip = (baselinePlan?.goals || []).reduce((s, g) => s + Number(g.monthlySip || 0), 0);
+    const scSip = (scOut.goals || []).reduce((s, g) => s + Number(g.monthlySip || 0), 0);
+    const diffSip = scSip - baseSip;
+
+    const baseSavings = Number(baseSummary.annualSavings || baseSummary.annualDiscretionarySavings || 0);
+    const scSavings = Number(scOut.summary?.annualSavings || scOut.summary?.annualDiscretionarySavings || 0);
+
+    const baseTax = Number(baseSummary.selectedRegimeTax || 0);
+    const scTax = Number(scOut.summary?.selectedRegimeTax || 0);
+
+    document.getElementById('base-shortfall').textContent = formatINR(baseShortfall);
+    document.getElementById('sc-shortfall').textContent = formatINR(scShortfall);
+    document.getElementById('diff-shortfall').innerHTML = diffShortfall < 0
+      ? `<span class="text-accent">▼ Shortfall reduced by ${formatINR(Math.abs(diffShortfall))}</span>`
+      : diffShortfall > 0
+        ? `<span class="text-danger">▲ Shortfall increased by ${formatINR(diffShortfall)}</span>`
+        : '<span class="text-muted">No change in shortfall</span>';
+
+    document.getElementById('base-sip').textContent = `${formatINR(baseSip)}/mo`;
+    document.getElementById('sc-sip').textContent = `${formatINR(scSip)}/mo`;
+    document.getElementById('diff-sip').innerHTML = diffSip < 0
+      ? `<span class="text-accent">▼ Monthly SIP reduced by ${formatINR(Math.abs(diffSip))}/mo</span>`
+      : diffSip > 0
+        ? `<span class="text-danger">▲ Monthly SIP increased by ${formatINR(diffSip)}/mo</span>`
+        : '<span class="text-muted">Same required SIP</span>';
+
+    document.getElementById('base-savings').textContent = formatINR(baseSavings);
+    document.getElementById('sc-savings').textContent = formatINR(scSavings);
+    document.getElementById('diff-savings').textContent = scSavings >= baseSavings
+      ? `+${formatINR(scSavings - baseSavings)} investable surplus`
+      : `-${formatINR(baseSavings - scSavings)} reduction`;
+
+    document.getElementById('base-tax').textContent = formatINR(baseTax);
+    document.getElementById('sc-tax').textContent = formatINR(scTax);
+    document.getElementById('diff-tax').textContent = scTax === baseTax ? 'Constant under tax slabs' : formatINR(scTax - baseTax);
+
+    // Insights narrative
+    document.getElementById('scenario-insights').innerHTML = `
+      <p>Under this scenario with an assumed equity return of <strong>${overrides.returnEquity}%</strong> and inflation at <strong>${overrides.inflationGeneral}%</strong>:</p>
+      <ul style="padding-left:20px;margin-top:8px;line-height:1.6">
+        <li><strong>Goal Funding Trajectory:</strong> ${diffShortfall < 0 ? `Total funding gap contracts from ${formatINR(baseShortfall)} down to ${formatINR(scShortfall)}.` : `Funding gap is projected at ${formatINR(scShortfall)}.`}</li>
+        <li><strong>Monthly Cash Flow Commitment:</strong> Required monthly goal SIP changes by ${diffSip < 0 ? `-${formatINR(Math.abs(diffSip))}/mo` : `+${formatINR(diffSip)}/mo`}.</li>
+        <li><strong>Retirement Horizon:</strong> Retiring at age <strong>${overrides.retirementAge}</strong> allows compounding over ${Math.max(0, overrides.retirementAge - 30)} active accumulation years.</li>
+      </ul>
+    `;
+  } catch (err) {
+    toast(err.message || 'Simulation failed.', 'error');
+  }
+}
+
+document.getElementById('scenario-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  runSimulation();
+});
+
+document.getElementById('run-sim-btn').addEventListener('click', () => runSimulation());
+
+document.getElementById('reset-scenario-btn').addEventListener('click', () => {
+  document.getElementById('sc-retire-age').value = 60;
+  document.getElementById('sc-extra-sip').value = 0;
+  document.getElementById('sc-equity-return').value = 12;
+  document.getElementById('sc-inflation').value = 6;
+  document.getElementById('sc-post-retire-return').value = 7;
+  runSimulation();
+});
+
+await load();
+</script>
+</body>
+</html>

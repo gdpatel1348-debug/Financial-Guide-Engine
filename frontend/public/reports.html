@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reports Catalog — Financial Guidance Engine</title>
+  <meta name="description" content="View and download immutable financial analysis reports." />
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <style>
+    .report-card-item {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-6);
+      margin-bottom: var(--sp-4);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--sp-6);
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar" aria-label="Main navigation">
+  <a class="navbar-brand" href="/dashboard.html">
+    <div class="navbar-logo">FG</div>
+    Financial Guidance Engine
+  </a>
+  <div class="navbar-actions">
+    <span id="user-chip" class="text-sm text-muted"></span>
+    <button id="logout-btn" class="btn btn-ghost btn-sm">Sign out</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar" aria-label="Sidebar navigation"></aside>
+
+  <main class="main-content" aria-label="Reports Catalog">
+    <div id="loading-view" class="loading-overlay">
+      <div class="spinner"></div>
+      <span>Loading saved reports…</span>
+    </div>
+
+    <div id="content-view" class="hidden">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+          <h1 style="font-size:1.4rem">📋 Financial Reports Catalog</h1>
+          <p class="text-sm text-muted mt-1">Access immutable snapshot reports and PDF documents generated across planning sessions.</p>
+        </div>
+        <div class="flex gap-3">
+          <a href="/analysis.html" class="btn btn-primary btn-sm">🚀 Run New Analysis</a>
+        </div>
+      </div>
+
+      <!-- Reports List Container -->
+      <div id="reports-list-container"></div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { api } from '/assets/js/api.js';
+import { requireAuth, renderUserChip, logout } from '/assets/js/auth.js';
+import { formatINR, formatDateTime, toast } from '/assets/js/format.js';
+import { renderAppSidebar } from '/assets/js/components/sidebar.js';
+
+const user = await requireAuth();
+renderUserChip(user);
+document.getElementById('logout-btn').addEventListener('click', () => logout());
+renderAppSidebar({ activeKey: 'reports' });
+
+const loadingView = document.getElementById('loading-view');
+const contentView = document.getElementById('content-view');
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function load() {
+  loadingView.classList.remove('hidden');
+  contentView.classList.add('hidden');
+
+  try {
+    const history = await api.analysis.history();
+    render(history || []);
+  } catch (err) {
+    toast(err.message || 'Failed to load reports.', 'error');
+  } finally {
+    loadingView.classList.add('hidden');
+    contentView.classList.remove('hidden');
+  }
+}
+
+function render(history) {
+  const container = document.getElementById('reports-list-container');
+  if (history.length === 0) {
+    container.innerHTML = `
+      <div class="card" style="text-align:center;padding:var(--sp-10);">
+        <div style="font-size:2.5rem;margin-bottom:12px;">📋</div>
+        <h3>No analysis reports generated yet</h3>
+        <p class="text-sm text-muted mt-2 max-w-md mx-auto">
+          Complete your financial profile and run your first analysis to generate an immutable PDF report and detailed snapshot.
+        </p>
+        <a href="/wizard.html" class="btn btn-primary mt-5">Go to Wizard</a>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = history.map((plan, idx) => {
+    const isLatest = idx === 0;
+    const dateStr = formatDateTime(plan.run_at || plan.runAt);
+    const nw = Number(plan.summary?.netWorth || 0);
+    const shortfall = Number(plan.summary?.totalShortfall || 0);
+
+    return `
+      <div class="report-card-item">
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 style="font-size:1.15rem;font-weight:700;">Financial Plan Report</h3>
+            ${isLatest ? '<span class="label-tag green">Latest</span>' : '<span class="label-tag blue">Snapshot</span>'}
+            <span class="badge">FY ${escHtml(plan.financial_year || plan.financialYear || '2026-27')}</span>
+          </div>
+          <div class="text-xs text-muted mt-2">
+            Generated on: <strong>${escHtml(dateStr)}</strong> · Engine: <strong>v${escHtml(plan.engine_version || plan.engineVersion || '1.0.0')}</strong> · Plan ID: <code>${escHtml((plan.id || '').slice(0, 8))}…</code>
+          </div>
+          <div class="flex gap-6 mt-3 text-sm">
+            <div>Net Worth: <strong class="text-mono" style="color:var(--color-accent)">${formatINR(nw)}</strong></div>
+            <div>Goal Shortfall: <strong class="text-mono" style="color:${shortfall > 0 ? 'var(--color-danger)' : 'var(--color-accent)'}">${formatINR(shortfall)}</strong></div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 shrink-0">
+          <a href="/analysis.html?planId=${escHtml(plan.id)}" class="btn btn-outline btn-sm">
+            🔍 View Interactive Analysis
+          </a>
+          <a href="${api.report.pdfUrl(plan.id)}" target="_blank" class="btn btn-primary btn-sm">
+            📄 Download PDF
+          </a>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+await load();
+</script>
+</body>
+</html>

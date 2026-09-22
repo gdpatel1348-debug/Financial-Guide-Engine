@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plan History & Replay — Financial Guidance Engine</title>
+  <meta name="description" content="Browse all historical plan snapshots and compare trajectory differences with Plan Replay." />
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <style>
+    .history-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-6);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--r-md);
+      padding: var(--sp-4) var(--sp-5);
+      margin-bottom: var(--sp-3);
+      transition: border-color var(--t-base);
+    }
+    .history-card:hover { border-color: var(--color-primary); }
+    .history-card-meta { display: flex; gap: var(--sp-6); flex-wrap: wrap; }
+    .history-meta-item dt { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-3); }
+    .history-meta-item dd { font-size: 0.9rem; font-family: var(--font-mono); color: var(--color-text); }
+    .history-actions { display: flex; gap: var(--sp-3); flex-shrink: 0; }
+    .replay-box {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-6);
+      margin-bottom: var(--sp-8);
+    }
+    .replay-diff-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: var(--sp-4); }
+    .replay-diff-table th, .replay-diff-table td { padding: 8px 12px; border-bottom: 1px solid var(--color-border); }
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar" aria-label="Main navigation">
+  <a class="navbar-brand" href="/dashboard.html">
+    <div class="navbar-logo">FG</div>
+    Financial Guidance Engine
+  </a>
+  <div class="navbar-actions">
+    <span id="user-chip" class="text-sm text-muted"></span>
+    <button id="logout-btn" class="btn btn-ghost btn-sm">Sign out</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar" aria-label="Sidebar navigation"></aside>
+
+  <main class="main-content" aria-label="Plan history and replay">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-6)">
+      <div>
+        <h1 style="font-size:1.4rem">🗂️ Plan History & Plan Replay</h1>
+        <p class="text-sm text-muted mt-1">Historical plan snapshots are immutable. Plan Replay allows cross-snapshot trajectory comparison.</p>
+      </div>
+      <button id="run-analysis-btn" class="btn btn-accent">🚀 Run New Analysis</button>
+    </div>
+
+    <div id="run-status" aria-live="polite"></div>
+
+    <div id="loading-view" class="loading-overlay">
+      <div class="spinner"></div>
+      <span>Loading plan history…</span>
+    </div>
+
+    <div id="empty-view" class="empty-state hidden">
+      <div class="empty-icon">🗂</div>
+      <div class="empty-title">No plan history yet</div>
+      <div class="empty-desc">Complete the intake wizard and run your first analysis to create an immutable snapshot.</div>
+      <a href="/wizard.html" class="btn btn-primary mt-6">Start Intake Wizard</a>
+    </div>
+
+    <div id="main-history-content" class="hidden">
+      <!-- Plan Replay Section (If 2+ snapshots exist) -->
+      <div id="replay-section" class="replay-box hidden">
+        <div class="flex justify-between items-center mb-3 flex-wrap gap-3">
+          <div>
+            <h2 style="font-size:1.15rem;font-weight:700;">🔄 Plan Replay</h2>
+            <p class="text-xs text-muted mt-1">Compare how your financial trajectory evolved between planning sessions.</p>
+          </div>
+          <div class="flex gap-2 items-center text-xs">
+            <span>Comparing</span>
+            <select id="replay-plan-a" class="form-select" style="font-size:0.8rem;padding:4px 8px;"></select>
+            <span>with</span>
+            <select id="replay-plan-b" class="form-select" style="font-size:0.8rem;padding:4px 8px;"></select>
+            <button id="btn-do-replay" class="btn btn-primary btn-sm">Compare</button>
+          </div>
+        </div>
+
+        <div id="replay-result" class="mt-4">
+          <p class="text-xs text-muted">Select two snapshots and click "Compare" to inspect delta metrics.</p>
+        </div>
+      </div>
+
+      <!-- Snapshot List -->
+      <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:var(--sp-4);">All Immutable Plan Snapshots</h2>
+      <div id="history-list" role="list" aria-label="Plan history"></div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { api } from '/assets/js/api.js';
+import { requireAuth, renderUserChip, logout } from '/assets/js/auth.js';
+import { formatINR, formatDateTime, toast } from '/assets/js/format.js';
+import { renderAppSidebar } from '/assets/js/components/sidebar.js';
+
+const user = await requireAuth();
+renderUserChip(user);
+document.getElementById('logout-btn').addEventListener('click', () => logout());
+renderAppSidebar({ activeKey: 'history' });
+
+const loading = document.getElementById('loading-view');
+const empty   = document.getElementById('empty-view');
+const mainContent = document.getElementById('main-history-content');
+const list    = document.getElementById('history-list');
+const replaySection = document.getElementById('replay-section');
+
+let historyList = [];
+
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function loadHistory() {
+  loading.classList.remove('hidden');
+  empty.classList.add('hidden');
+  mainContent.classList.add('hidden');
+
+  try {
+    historyList = await api.analysis.history();
+    loading.classList.add('hidden');
+
+    if (!historyList || historyList.length === 0) {
+      empty.classList.remove('hidden');
+      return;
+    }
+
+    mainContent.classList.remove('hidden');
+
+    // Populate Replay dropdowns if 2+ plans
+    if (historyList.length >= 2) {
+      replaySection.classList.remove('hidden');
+      const selectA = document.getElementById('replay-plan-a');
+      const selectB = document.getElementById('replay-plan-b');
+
+      const optionsHtml = historyList.map((run, i) => `
+        <option value="${escHtml(run.id)}" ${i === 1 ? 'selected' : ''}>
+          ${formatDateTime(run.runAt || run.run_at)} (${escHtml(run.financialYear || run.financial_year)})
+        </option>
+      `).join('');
+
+      selectA.innerHTML = optionsHtml;
+      selectB.innerHTML = historyList.map((run, i) => `
+        <option value="${escHtml(run.id)}" ${i === 0 ? 'selected' : ''}>
+          ${formatDateTime(run.runAt || run.run_at)} (${escHtml(run.financialYear || run.financial_year)})
+        </option>
+      `).join('');
+
+      // Auto-run initial comparison
+      comparePlans(historyList[1].id, historyList[0].id);
+    }
+
+    list.innerHTML = historyList.map((run, i) => {
+      const isLatest = i === 0;
+      return `
+        <div class="history-card" role="listitem">
+          <div class="history-card-meta">
+            <dl class="history-meta-item">
+              <dt>Date</dt>
+              <dd>${formatDateTime(run.runAt || run.run_at)}</dd>
+            </dl>
+            <dl class="history-meta-item">
+              <dt>Financial Year</dt>
+              <dd>${escHtml(run.financialYear || run.financial_year)}</dd>
+            </dl>
+            <dl class="history-meta-item">
+              <dt>Engine</dt>
+              <dd>v${escHtml(run.engineVersion || run.engine_version)}</dd>
+            </dl>
+            <dl class="history-meta-item">
+              <dt>Plan ID</dt>
+              <dd class="text-dimmer">${escHtml((run.id || '').slice(0, 8))}…</dd>
+            </dl>
+            ${isLatest ? '<span class="label-tag green" style="align-self:center">Current</span>' : ''}
+          </div>
+          <div class="history-actions">
+            <a href="/analysis.html?planId=${escHtml(run.id)}" class="btn btn-outline btn-sm">View Analysis</a>
+            <a href="${api.report.pdfUrl(run.id)}" target="_blank" class="btn btn-ghost btn-sm">PDF</a>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    loading.classList.add('hidden');
+    toast(e.message || 'Failed to load plan history.', 'error');
+  }
+}
+
+async function comparePlans(idA, idB) {
+  const replayEl = document.getElementById('replay-result');
+  replayEl.innerHTML = '<div class="text-xs text-muted">Calculating snapshot deltas…</div>';
+
+  try {
+    const [planA, planB] = await Promise.all([
+      api.analysis.get(idA),
+      api.analysis.get(idB)
+    ]);
+
+    const sumA = planA.summary || {};
+    const sumB = planB.summary || {};
+
+    const nwA = Number(sumA.netWorth || 0);
+    const nwB = Number(sumB.netWorth || 0);
+    const nwDiff = nwB - nwA;
+
+    const astA = Number(sumA.totalAssets || 0);
+    const astB = Number(sumB.totalAssets || 0);
+
+    const liabA = Number(sumA.totalLiabilities || 0);
+    const liabB = Number(sumB.totalLiabilities || 0);
+
+    const gapA = Number(sumA.totalShortfall || 0);
+    const gapB = Number(sumB.totalShortfall || 0);
+    const gapDiff = gapB - gapA;
+
+    const sipA = (planA.goals || []).reduce((s, g) => s + Number(g.monthlySip || 0), 0);
+    const sipB = (planB.goals || []).reduce((s, g) => s + Number(g.monthlySip || 0), 0);
+
+    replayEl.innerHTML = `
+      <p class="text-xs text-muted">
+        <strong>Compared with your previous plan</strong> (${formatDateTime(planA.planRun.runAt)}):
+      </p>
+      <table class="replay-diff-table">
+        <thead>
+          <tr>
+            <th>Planning Dimension</th>
+            <th class="text-right">Previous Plan</th>
+            <th class="text-right">Selected Plan</th>
+            <th class="text-right">Delta Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Net Worth</strong></td>
+            <td class="text-right text-mono">${formatINR(nwA)}</td>
+            <td class="text-right text-mono font-bold">${formatINR(nwB)}</td>
+            <td class="text-right text-mono" style="color:${nwDiff >= 0 ? 'var(--color-accent)' : 'var(--color-danger)'}">${nwDiff >= 0 ? '+' : ''}${formatINR(nwDiff)}</td>
+          </tr>
+          <tr>
+            <td>Total Assets</td>
+            <td class="text-right text-mono">${formatINR(astA)}</td>
+            <td class="text-right text-mono">${formatINR(astB)}</td>
+            <td class="text-right text-mono">${formatINR(astB - astA)}</td>
+          </tr>
+          <tr>
+            <td>Total Liabilities</td>
+            <td class="text-right text-mono">${formatINR(liabA)}</td>
+            <td class="text-right text-mono">${formatINR(liabB)}</td>
+            <td class="text-right text-mono">${formatINR(liabB - liabA)}</td>
+          </tr>
+          <tr>
+            <td><strong>Total Goal Shortfall</strong></td>
+            <td class="text-right text-mono">${formatINR(gapA)}</td>
+            <td class="text-right text-mono font-bold">${formatINR(gapB)}</td>
+            <td class="text-right text-mono" style="color:${gapDiff <= 0 ? 'var(--color-accent)' : 'var(--color-danger)'}">${gapDiff >= 0 ? '+' : ''}${formatINR(gapDiff)}</td>
+          </tr>
+          <tr>
+            <td>Total Required Monthly SIP</td>
+            <td class="text-right text-mono">${formatINR(sipA)}/mo</td>
+            <td class="text-right text-mono">${formatINR(sipB)}/mo</td>
+            <td class="text-right text-mono">${formatINR(sipB - sipA)}/mo</td>
+          </tr>
+          <tr>
+            <td>Selected Tax Regime</td>
+            <td class="text-right">${sumA.selectedRegime || 'New'}</td>
+            <td class="text-right">${sumB.selectedRegime || 'New'}</td>
+            <td class="text-right">${sumA.selectedRegime === sumB.selectedRegime ? 'Unchanged' : 'Regime Switched'}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+  } catch (err) {
+    replayEl.innerHTML = `<span class="text-xs text-danger">Replay calculation failed: ${escHtml(err.message)}</span>`;
+  }
+}
+
+document.getElementById('btn-do-replay')?.addEventListener('click', () => {
+  const idA = document.getElementById('replay-plan-a').value;
+  const idB = document.getElementById('replay-plan-b').value;
+  comparePlans(idA, idB);
+});
+
+// Run new analysis button
+document.getElementById('run-analysis-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('run-analysis-btn');
+  const statusEl = document.getElementById('run-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+  statusEl.innerHTML = '<div class="loading-overlay"><div class="spinner"></div><span class="text-muted">Running analysis…</span></div>';
+  try {
+    const result = await api.analysis.run({ financialYear: '2026-27' });
+    toast('New analysis complete!', 'success');
+    statusEl.innerHTML = '';
+    window.location.href = `/analysis.html?planId=${result.planRun.id}`;
+  } catch (e) {
+    statusEl.innerHTML = `<div class="alert alert-error mt-4">${escHtml(e.message || 'Analysis failed.')}</div>`;
+    toast(e.message || 'Failed.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Run New Analysis';
+  }
+});
+
+await loadHistory();
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Net Asset Value;Date
+10001;INF209K01165;INF209K01173;HDFC Top 100 Fund - Growth;1025.4320;20-Sep-2026
+10002;INF200K01017;INF200K01025;SBI Bluechip Fund - Regular Plan - Growth;84.5210;20-Sep-2026
+10003;INF174K01LS2;INF174K01LT0;Kotak Emerging Equity Scheme - Growth;112.3410;20-Sep-2026
+10004;INF846K01164;INF846K01172;Axis Small Cap Fund - Regular Growth;95.1230;20-Sep-2026
+10005;INF109K01490;INF109K01508;ICICI Prudential Balanced Advantage Fund - Growth;68.7500;20-Sep-2026

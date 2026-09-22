@@ -1,0 +1,33 @@
+[
+  {
+    "amfiCode": "10001",
+    "holdings": [
+      { "isin": "INE002A01018", "instrumentName": "Reliance Industries Ltd", "sector": "Energy", "weightPct": "9.80" },
+      { "isin": "INE040A01034", "instrumentName": "HDFC Bank Ltd", "sector": "Financials", "weightPct": "9.50" },
+      { "isin": "INE090A01021", "instrumentName": "ICICI Bank Ltd", "sector": "Financials", "weightPct": "8.20" },
+      { "isin": "INE009A01021", "instrumentName": "Infosys Ltd", "sector": "Technology", "weightPct": "7.10" },
+      { "isin": "INE018A01030", "instrumentName": "Larsen & Toubro Ltd", "sector": "Industrials", "weightPct": "5.40" },
+      { "isin": "INE154A01015", "instrumentName": "ITC Ltd", "sector": "Consumer Staples", "weightPct": "4.20" }
+    ]
+  },
+  {
+    "amfiCode": "10002",
+    "holdings": [
+      { "isin": "INE040A01034", "instrumentName": "HDFC Bank Ltd", "sector": "Financials", "weightPct": "9.20" },
+      { "isin": "INE090A01021", "instrumentName": "ICICI Bank Ltd", "sector": "Financials", "weightPct": "8.80" },
+      { "isin": "INE002A01018", "instrumentName": "Reliance Industries Ltd", "sector": "Energy", "weightPct": "7.50" },
+      { "isin": "INE009A01021", "instrumentName": "Infosys Ltd", "sector": "Technology", "weightPct": "6.80" },
+      { "isin": "INE062A01020", "instrumentName": "State Bank of India", "sector": "Financials", "weightPct": "5.10" },
+      { "isin": "INE467B01029", "instrumentName": "Tata Consultancy Services", "sector": "Technology", "weightPct": "4.00" }
+    ]
+  },
+  {
+    "amfiCode": "10003",
+    "holdings": [
+      { "isin": "INE205A01025", "instrumentName": "Vedant Fashions Ltd", "sector": "Consumer Discretionary", "weightPct": "4.20" },
+      { "isin": "INE397D01024", "instrumentName": "Bharti Airtel Ltd", "sector": "Telecom", "weightPct": "3.80" },
+      { "isin": "INE009A01021", "instrumentName": "Infosys Ltd", "sector": "Technology", "weightPct": "2.50" },
+      { "isin": "INE018A01030", "instrumentName": "Larsen & Toubro Ltd", "sector": "Industrials", "weightPct": "2.10" }
+    ]
+  }
+]

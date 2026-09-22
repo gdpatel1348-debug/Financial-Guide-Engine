@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Financial Goals — Financial Guidance Engine</title>
+  <meta name="description" content="Manage your life goals, track projected funding, and calculate required monthly SIP." />
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <style>
+    .goal-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); margin-bottom: var(--sp-6); }
+    .goal-grid { display: grid; grid-template-columns: 1fr; gap: var(--sp-5); }
+    .goal-card-pro {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-6);
+      box-shadow: var(--shadow-sm);
+      transition: border-color var(--t-fast);
+    }
+    .goal-card-pro:hover { border-color: var(--color-border-2); }
+    .goal-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: var(--sp-4);
+      margin-bottom: var(--sp-4);
+    }
+    .goal-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: var(--sp-4);
+      margin: var(--sp-4) 0;
+    }
+    .metric-box dt { font-size: 0.72rem; color: var(--color-text-3); text-transform: uppercase; font-weight: 600; }
+    .metric-box dd { font-size: 1.1rem; font-weight: 700; font-family: var(--font-mono); margin-top: 2px; }
+    .driver-box {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border-2);
+      border-radius: var(--r-md);
+      padding: var(--sp-4);
+      margin-top: var(--sp-4);
+      font-size: 0.82rem;
+    }
+    .driver-title { font-weight: 600; color: var(--color-text-2); margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar" aria-label="Main navigation">
+  <a class="navbar-brand" href="/dashboard.html">
+    <div class="navbar-logo">FG</div>
+    Financial Guidance Engine
+  </a>
+  <div class="navbar-actions">
+    <span id="user-chip" class="text-sm text-muted"></span>
+    <button id="logout-btn" class="btn btn-ghost btn-sm">Sign out</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar" aria-label="Sidebar navigation"></aside>
+
+  <main class="main-content" aria-label="Goals workspace">
+    <div id="loading-view" class="loading-overlay">
+      <div class="spinner"></div>
+      <span>Loading your goals workspace…</span>
+    </div>
+
+    <div id="content-view" class="hidden">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+          <h1 style="font-size:1.4rem">🎯 Goals & Life Milestones</h1>
+          <p class="text-sm text-muted mt-1">Inflation-adjusted goal funding, projected corpus, and monthly SIP requirements.</p>
+        </div>
+        <div class="flex gap-3">
+          <button id="add-goal-btn" class="btn btn-primary">➕ Add New Goal</button>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="goal-kpis" id="kpis-container">
+        <div class="card">
+          <div class="card-title">Total Goals</div>
+          <div class="card-value" id="kpi-count">0</div>
+          <div class="card-sub">Active milestones</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Target Value (Today)</div>
+          <div class="card-value" id="kpi-today-val">₹0</div>
+          <div class="card-sub">Uninflated total</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Future Value (Inflated)</div>
+          <div class="card-value text-accent" id="kpi-future-val">₹0</div>
+          <div class="card-sub">At milestone years</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Total Monthly SIP Req.</div>
+          <div class="card-value text-primary" id="kpi-total-sip">₹0</div>
+          <div class="card-sub">Across all gaps</div>
+        </div>
+      </div>
+
+      <!-- Goals List -->
+      <div id="goals-list" class="goal-grid"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Add/Edit Goal Modal -->
+<div id="goal-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title" style="font-size:1.15rem;font-weight:700">Add Goal</h2>
+      <button id="modal-close-btn" class="btn btn-ghost btn-sm" aria-label="Close">✕</button>
+    </div>
+    <form id="goal-form">
+      <input type="hidden" id="g-id" />
+      <div class="form-row">
+        <div class="form-group">
+          <label for="g-type" class="form-label required">Goal Type</label>
+          <select id="g-type" class="form-select" required>
+            <option value="RETIREMENT">Retirement</option>
+            <option value="HOUSE">House Purchase</option>
+            <option value="CHILD_EDUCATION">Child Education</option>
+            <option value="WEALTH_CREATION">Wealth Creation</option>
+            <option value="VEHICLE">Vehicle / Car</option>
+            <option value="EMERGENCY_FUND">Emergency Fund</option>
+            <option value="VACATION">Travel / Vacation</option>
+            <option value="OTHER">Other Milestone</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="g-label" class="form-label required">Goal Label / Description</label>
+          <input type="text" id="g-label" class="form-input" placeholder="e.g. Dream Home in Bangalore" required />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="g-amount" class="form-label required">Target Cost in Today's Value (₹)</label>
+          <input type="number" id="g-amount" class="form-input" placeholder="e.g. 5000000" min="1000" required />
+          <span class="form-hint">Cost if purchased today in today's rupees.</span>
+        </div>
+        <div class="form-group">
+          <label for="g-year" class="form-label required">Target Year</label>
+          <input type="number" id="g-year" class="form-input" placeholder="2035" min="2026" max="2080" required />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="g-priority" class="form-label">Priority (1 = Highest)</label>
+          <input type="number" id="g-priority" class="form-input" value="1" min="1" max="10" />
+        </div>
+        <div class="form-group">
+          <label for="g-inflation" class="form-label">Inflation Category</label>
+          <select id="g-inflation" class="form-select">
+            <option value="inflation_general">General Inflation (6%/yr)</option>
+            <option value="inflation_education">Education Inflation (8%/yr)</option>
+            <option value="inflation_lifestyle">Lifestyle Inflation (7%/yr)</option>
+            <option value="inflation_medical">Medical Inflation (9%/yr)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Link Existing Assets to this Goal</label>
+        <div id="linked-assets-checkboxes" class="flex flex-col gap-2" style="max-height:140px;overflow-y:auto;border:1px solid var(--color-border);padding:8px;border-radius:6px;">
+          <!-- Loaded dynamically -->
+        </div>
+        <span class="form-hint">Linked assets will grow to fund this goal's target future corpus.</span>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="modal-cancel-btn" class="btn btn-ghost">Cancel</button>
+        <button type="submit" id="modal-save-btn" class="btn btn-primary">Save Goal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { api } from '/assets/js/api.js';
+import { requireAuth, renderUserChip, logout } from '/assets/js/auth.js';
+import { formatINR, toast } from '/assets/js/format.js';
+import { renderAppSidebar } from '/assets/js/components/sidebar.js';
+
+const user = await requireAuth();
+renderUserChip(user);
+document.getElementById('logout-btn').addEventListener('click', () => logout());
+renderAppSidebar({ activeKey: 'goals' });
+
+const loadingView = document.getElementById('loading-view');
+const contentView = document.getElementById('content-view');
+const modal = document.getElementById('goal-modal');
+const form = document.getElementById('goal-form');
+
+let goalsList = [];
+let userAssets = [];
+let latestAnalysis = null;
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function loadData() {
+  loadingView.classList.remove('hidden');
+  contentView.classList.add('hidden');
+
+  try {
+    const [goals, assets, history] = await Promise.all([
+      api.goals.list(),
+      api.assets.list(),
+      api.analysis.history().catch(() => [])
+    ]);
+
+    goalsList = goals || [];
+    userAssets = assets || [];
+
+    if (history && history.length > 0) {
+      latestAnalysis = await api.analysis.get(history[0].id).catch(() => null);
+    }
+
+    render();
+  } catch (err) {
+    toast(err.message || 'Failed to load goals data.', 'error');
+  } finally {
+    loadingView.classList.add('hidden');
+    contentView.classList.remove('hidden');
+  }
+}
+
+function render() {
+  const count = goalsList.length;
+  const totalToday = goalsList.reduce((sum, g) => sum + Number(g.target_amount_today || 0), 0);
+
+  // Analysis goal maps
+  const analyzedGoals = latestAnalysis?.goals || [];
+  const goalAnalysisMap = new Map();
+  for (const ag of analyzedGoals) {
+    if (ag.id) goalAnalysisMap.set(ag.id, ag);
+  }
+
+  let totalFuture = 0;
+  let totalSip = 0;
+
+  for (const g of goalsList) {
+    const ag = goalAnalysisMap.get(g.id);
+    if (ag) {
+      totalFuture += Number(ag.futureGoalValue || 0);
+      totalSip += Number(ag.monthlySip || 0);
+    } else {
+      totalFuture += Number(g.target_amount_today || 0);
+    }
+  }
+
+  document.getElementById('kpi-count').textContent = count;
+  document.getElementById('kpi-today-val').textContent = formatINR(totalToday);
+  document.getElementById('kpi-future-val').textContent = formatINR(totalFuture);
+  document.getElementById('kpi-total-sip').textContent = `${formatINR(totalSip)}/mo`;
+
+  const container = document.getElementById('goals-list');
+  if (count === 0) {
+    container.innerHTML = `
+      <div class="card" style="text-align:center;padding:var(--sp-10);">
+        <div style="font-size:2.5rem;margin-bottom:12px;">🎯</div>
+        <h3>No financial goals added yet</h3>
+        <p class="text-sm text-muted mt-2 max-w-md mx-auto">
+          Add your target milestones like Retirement, Home Purchase, or Child Education. We will calculate the future inflation-adjusted cost, projected asset funding, and indicative SIP.
+        </p>
+        <button id="empty-add-btn" class="btn btn-primary mt-5">➕ Add First Goal</button>
+      </div>
+    `;
+    document.getElementById('empty-add-btn')?.addEventListener('click', openAddModal);
+    return;
+  }
+
+  container.innerHTML = goalsList.map(g => {
+    const ag = goalAnalysisMap.get(g.id);
+    const fv = ag ? Number(ag.futureGoalValue || 0) : Number(g.target_amount_today || 0);
+    const funded = ag ? Number(ag.projectedCorpus || 0) : 0;
+    const gap = ag ? Number(ag.shortfall || 0) : fv;
+    const sip = ag ? Number(ag.monthlySip || 0) : 0;
+    const pct = fv > 0 ? Math.min(100, Math.round((funded / fv) * 100)) : 0;
+
+    let statusBadge = 'Information needed';
+    let statusClass = 'label-tag blue';
+    let nextAction = 'Run a new analysis to compute projected funding curves';
+
+    if (ag) {
+      if (gap <= 0) {
+        statusBadge = 'On track (Fully Funded)';
+        statusClass = 'label-tag green';
+        nextAction = 'Maintain asset allocation and periodic reviews';
+      } else if (pct >= 50) {
+        statusBadge = 'Partially funded';
+        statusClass = 'label-tag yellow';
+        nextAction = `Invest indicative SIP of ${formatINR(sip)}/mo in growth assets`;
+      } else {
+        statusBadge = 'Needs attention';
+        statusClass = 'label-tag red';
+        nextAction = `Start dedicated monthly SIP of ${formatINR(sip)}/mo or link additional assets`;
+      }
+    }
+
+    return `
+      <div class="goal-card-pro" data-id="${escHtml(g.id)}">
+        <div class="goal-card-header">
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 style="font-size:1.15rem;font-weight:700;">${escHtml(g.label || g.goal_type)}</h3>
+              <span class="${statusClass}">${statusBadge}</span>
+            </div>
+            <div class="text-xs text-muted mt-1">
+              Type: <strong>${escHtml(g.goal_type)}</strong> · Target Year: <strong>${escHtml(g.target_year)}</strong> · Priority: <strong>P${escHtml(g.priority || 1)}</strong>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btn-ghost btn-sm edit-goal-btn" data-id="${escHtml(g.id)}">✏️ Edit</button>
+            <button class="btn btn-ghost btn-sm delete-goal-btn text-danger" data-id="${escHtml(g.id)}">🗑️ Delete</button>
+          </div>
+        </div>
+
+        <div class="goal-metrics-grid">
+          <div class="metric-box">
+            <dt>Today's Cost</dt>
+            <dd>${formatINR(g.target_amount_today)}</dd>
+          </div>
+          <div class="metric-box">
+            <dt>Future Est. Cost</dt>
+            <dd class="text-accent">${formatINR(fv)}</dd>
+          </div>
+          <div class="metric-box">
+            <dt>Projected Funding</dt>
+            <dd>${formatINR(funded)}</dd>
+          </div>
+          <div class="metric-box">
+            <dt>Funding Gap</dt>
+            <dd style="color:${gap > 0 ? 'var(--color-danger)' : 'var(--color-accent)'}">${gap > 0 ? formatINR(gap) : '₹0 (Surplus)'}</dd>
+          </div>
+          <div class="metric-box">
+            <dt>Monthly SIP</dt>
+            <dd class="text-primary">${gap > 0 ? `${formatINR(sip)}/mo` : '—'}</dd>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="goal-progress-track mt-3">
+          <div class="goal-progress-fill funded" style="width:${pct}%"></div>
+          ${gap > 0 ? `<div class="goal-progress-fill gap" style="width:${100 - pct}%"></div>` : ''}
+        </div>
+        <div class="flex justify-between text-xs text-muted mt-1">
+          <span>${pct}% Funded</span>
+          <span>Target ${escHtml(g.target_year)}</span>
+        </div>
+
+        <!-- Drivers explanation -->
+        <div class="driver-box">
+          <div class="driver-title">💡 What changes this goal?</div>
+          <div class="text-muted">
+            • <strong>Target Year (${escHtml(g.target_year)}):</strong> Adjusting timeline expands or contracts compounding years.<br/>
+            • <strong>Inflation (${escHtml(g.inflation_key || 'General')}):</strong> Compounded annually to calculate future required cost.<br/>
+            • <strong>Next Recommended Action:</strong> ${escHtml(nextAction)}.
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Wire buttons
+  document.querySelectorAll('.edit-goal-btn').forEach(btn => {
+    btn.addEventListener('click', () => openEditModal(btn.dataset.id));
+  });
+
+  document.querySelectorAll('.delete-goal-btn').forEach(btn => {
+    btn.addEventListener('click', () => deleteGoal(btn.dataset.id));
+  });
+}
+
+function populateAssetCheckboxes(selectedIds = []) {
+  const container = document.getElementById('linked-assets-checkboxes');
+  if (!userAssets || userAssets.length === 0) {
+    container.innerHTML = '<span class="text-xs text-muted">No assets found in portfolio. Add assets first to link them.</span>';
+    return;
+  }
+  container.innerHTML = userAssets.map(a => `
+    <label class="flex items-center gap-2 text-xs">
+      <input type="checkbox" name="linkedAssets" value="${escHtml(a.id)}" ${selectedIds.includes(a.id) ? 'checked' : ''} />
+      <span><strong>${escHtml(a.label || a.asset_type)}</strong> (${formatINR(a.current_value)})</span>
+    </label>
+  `).join('');
+}
+
+function openAddModal() {
+  document.getElementById('modal-title').textContent = 'Add New Goal';
+  document.getElementById('g-id').value = '';
+  document.getElementById('g-type').value = 'RETIREMENT';
+  document.getElementById('g-label').value = '';
+  document.getElementById('g-amount').value = '';
+  document.getElementById('g-year').value = new Date().getFullYear() + 10;
+  document.getElementById('g-priority').value = '1';
+  document.getElementById('g-inflation').value = 'inflation_general';
+  populateAssetCheckboxes([]);
+  modal.classList.remove('hidden');
+}
+
+function openEditModal(goalId) {
+  const g = goalsList.find(item => item.id === goalId);
+  if (!g) return;
+
+  document.getElementById('modal-title').textContent = 'Edit Goal';
+  document.getElementById('g-id').value = g.id;
+  document.getElementById('g-type').value = g.goal_type || 'OTHER';
+  document.getElementById('g-label').value = g.label || '';
+  document.getElementById('g-amount').value = g.target_amount_today || '';
+  document.getElementById('g-year').value = g.target_year || '';
+  document.getElementById('g-priority').value = g.priority || 1;
+  document.getElementById('g-inflation').value = g.inflation_key || 'inflation_general';
+
+  const linked = typeof g.linked_asset_ids === 'string' ? JSON.parse(g.linked_asset_ids || '[]') : (g.linked_asset_ids || []);
+  populateAssetCheckboxes(linked);
+  modal.classList.remove('hidden');
+}
+
+function closeModal() {
+  modal.classList.add('hidden');
+}
+
+async function deleteGoal(id) {
+  if (!confirm('Are you sure you want to delete this goal?')) return;
+  try {
+    await api.goals.remove(id);
+    toast('Goal deleted successfully.', 'success');
+    await loadData();
+  } catch (err) {
+    toast(err.message || 'Failed to delete goal.', 'error');
+  }
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('g-id').value;
+  const selectedAssetIds = Array.from(document.querySelectorAll('input[name="linkedAssets"]:checked')).map(cb => cb.value);
+
+  const payload = {
+    goalType: document.getElementById('g-type').value,
+    label: document.getElementById('g-label').value,
+    targetAmountToday: Number(document.getElementById('g-amount').value),
+    targetYear: Number(document.getElementById('g-year').value),
+    priority: Number(document.getElementById('g-priority').value) || 1,
+    inflationKey: document.getElementById('g-inflation').value,
+    linkedAssetIds: selectedAssetIds
+  };
+
+  try {
+    if (id) {
+      await api.goals.update(id, payload);
+      toast('Goal updated successfully.', 'success');
+    } else {
+      await api.goals.create(payload);
+      toast('New goal created successfully.', 'success');
+    }
+    closeModal();
+    await loadData();
+  } catch (err) {
+    toast(err.message || 'Failed to save goal.', 'error');
+  }
+});
+
+document.getElementById('add-goal-btn').addEventListener('click', openAddModal);
+document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
+
+await loadData();
+</script>
+</body>
+</html>

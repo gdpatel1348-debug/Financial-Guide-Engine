@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cash Flow & Savings — Financial Guidance Engine</title>
+  <meta name="description" content="Track income inflows, expense allocations, debt service, and savings rate." />
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <style>
+    .cash-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); margin-bottom: var(--sp-6); }
+    .cashflow-split-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--sp-6); margin-bottom: var(--sp-6); }
+    .leak-card {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border-2);
+      border-radius: var(--r-md);
+      padding: var(--sp-4);
+      margin-top: var(--sp-3);
+    }
+    .leak-item { display: flex; gap: var(--sp-3); padding: 8px 0; border-bottom: 1px solid var(--color-border); }
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar" aria-label="Main navigation">
+  <a class="navbar-brand" href="/dashboard.html">
+    <div class="navbar-logo">FG</div>
+    Financial Guidance Engine
+  </a>
+  <div class="navbar-actions">
+    <span id="user-chip" class="text-sm text-muted"></span>
+    <button id="logout-btn" class="btn btn-ghost btn-sm">Sign out</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar" aria-label="Sidebar navigation"></aside>
+
+  <main class="main-content" aria-label="Cash Flow workspace">
+    <div id="loading-view" class="loading-overlay">
+      <div class="spinner"></div>
+      <span>Loading cash flow model…</span>
+    </div>
+
+    <div id="content-view" class="hidden">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+          <h1 style="font-size:1.4rem">📈 Cash Flow & Discretionary Savings</h1>
+          <p class="text-sm text-muted mt-1">Inflow distribution across taxes, living expenses, debt payments, and investable savings.</p>
+        </div>
+        <div class="flex gap-3">
+          <button id="edit-cashflow-btn" class="btn btn-primary">✏️ Edit Income & Expenses</button>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="cash-kpis">
+        <div class="card">
+          <div class="card-title">Gross Annual Income</div>
+          <div class="card-value text-accent" id="kpi-gross-income">₹0</div>
+          <div class="card-sub" id="kpi-monthly-income">₹0/month</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Estimated Tax Outflow</div>
+          <div class="card-value text-danger" id="kpi-tax-outflow">₹0</div>
+          <div class="card-sub" id="kpi-tax-regime">Selected Regime</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Living & Debt Outflows</div>
+          <div class="card-value text-warn" id="kpi-total-expenses">₹0</div>
+          <div class="card-sub">Expenses + Loan EMIs</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Discretionary Annual Savings</div>
+          <div class="card-value text-primary" id="kpi-savings">₹0</div>
+          <div class="card-sub" id="kpi-savings-rate">0% savings rate</div>
+        </div>
+      </div>
+
+      <!-- Cash Flow Breakdown & Leak Finder -->
+      <div class="cashflow-split-grid">
+        <!-- Visual Distribution Chart Container -->
+        <div id="income-chart-container"></div>
+
+        <!-- Cash Flow Leak Finder -->
+        <div class="card">
+          <h3 style="font-size:1.05rem;font-weight:600">🕵️ Cash Flow Leak Finder</h3>
+          <p class="text-xs text-muted mt-1">Automated observations based strictly on your entered cash flow variables.</p>
+          <div id="leak-finder-list" class="leak-card"></div>
+        </div>
+      </div>
+
+      <!-- Detailed Breakdown Table -->
+      <div class="card">
+        <h3 style="font-size:1.05rem;font-weight:600;margin-bottom:var(--sp-4);">Cash Flow Waterfall Breakdown</h3>
+        <div style="overflow-x:auto;">
+          <table class="chart-data-table">
+            <thead>
+              <tr>
+                <th>Cash Flow Component</th>
+                <th>Classification</th>
+                <th class="text-right">Annual Amount</th>
+                <th class="text-right">Monthly Equivalent</th>
+                <th class="text-right">% of Gross Income</th>
+              </tr>
+            </thead>
+            <tbody id="cashflow-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Edit Income & Expenses Modal -->
+<div id="cashflow-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-cf-title">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-cf-title" style="font-size:1.15rem;font-weight:700">Edit Income & Expenses</h2>
+      <button id="modal-close-btn" class="btn btn-ghost btn-sm" aria-label="Close">✕</button>
+    </div>
+    <form id="cashflow-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cf-gross" class="form-label required">Gross Annual Income (₹)</label>
+          <input type="number" id="cf-gross" class="form-input" placeholder="e.g. 1500000" min="0" required />
+        </div>
+        <div class="form-group">
+          <label for="cf-other" class="form-label">Other Annual Income (Rental/Interest/Bonus) (₹)</label>
+          <input type="number" id="cf-other" class="form-input" placeholder="0" min="0" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cf-essential" class="form-label required">Monthly Essential Expenses (Rent, Food, Utilities) (₹)</label>
+          <input type="number" id="cf-essential" class="form-input" placeholder="e.g. 45000" min="0" required />
+        </div>
+        <div class="form-group">
+          <label for="cf-lifestyle" class="form-label">Monthly Lifestyle Expenses (Dining, Travel, Discretionary) (₹)</label>
+          <input type="number" id="cf-lifestyle" class="form-input" placeholder="e.g. 15000" min="0" />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="modal-cancel-btn" class="btn btn-ghost">Cancel</button>
+        <button type="submit" id="modal-save-btn" class="btn btn-primary">Save Cash Flow Details</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { api } from '/assets/js/api.js';
+import { requireAuth, renderUserChip, logout } from '/assets/js/auth.js';
+import { formatINR, toast } from '/assets/js/format.js';
+import { renderAppSidebar } from '/assets/js/components/sidebar.js';
+import { renderIncomeDistributionChart } from '/assets/js/components/charts.js';
+
+const user = await requireAuth();
+renderUserChip(user);
+document.getElementById('logout-btn').addEventListener('click', () => logout());
+renderAppSidebar({ activeKey: 'cash-flow' });
+
+const loadingView = document.getElementById('loading-view');
+const contentView = document.getElementById('content-view');
+const modal = document.getElementById('cashflow-modal');
+const form = document.getElementById('cashflow-form');
+
+let incomeData = null;
+let expenseData = null;
+let liabilitiesList = [];
+let insuranceList = [];
+let latestAnalysis = null;
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function loadData() {
+  loadingView.classList.remove('hidden');
+  contentView.classList.add('hidden');
+
+  try {
+    const [income, expenses, liabilities, insurance, history] = await Promise.all([
+      api.income.get().catch(() => null),
+      api.expenses.get().catch(() => null),
+      api.liabilities.list().catch(() => []),
+      api.insurance.list().catch(() => []),
+      api.analysis.history().catch(() => [])
+    ]);
+
+    incomeData = income || {};
+    expenseData = expenses || {};
+    liabilitiesList = liabilities || [];
+    insuranceList = insurance || [];
+
+    if (history && history.length > 0) {
+      latestAnalysis = await api.analysis.get(history[0].id).catch(() => null);
+    }
+
+    render();
+  } catch (err) {
+    toast(err.message || 'Failed to load cash flow model.', 'error');
+  } finally {
+    loadingView.classList.add('hidden');
+    contentView.classList.remove('hidden');
+  }
+}
+
+function render() {
+  const gross = Number(incomeData.gross_annual || 0) + Number(incomeData.other_income || 0);
+  const monthlyEssential = Number(expenseData.monthly_essential_expenses || 0);
+  const monthlyLifestyle = Number(expenseData.monthly_lifestyle_expenses || 0);
+  const annualLiving = (monthlyEssential + monthlyLifestyle) * 12;
+
+  const annualEmi = liabilitiesList.reduce((sum, l) => sum + (Number(l.emi || 0) * 12), 0);
+  const annualPremium = insuranceList.reduce((sum, p) => sum + Number(p.annual_premium || 0), 0);
+
+  const estimatedTax = Number(latestAnalysis?.summary?.selectedRegimeTax || 0);
+  const totalOutflows = estimatedTax + annualLiving + annualEmi + annualPremium;
+  const savings = Math.max(0, gross - totalOutflows);
+  const savingsRate = gross > 0 ? ((savings / gross) * 100).toFixed(1) : '0';
+
+  document.getElementById('kpi-gross-income').textContent = formatINR(gross);
+  document.getElementById('kpi-monthly-income').textContent = `${formatINR(gross / 12)}/mo`;
+  document.getElementById('kpi-tax-outflow').textContent = formatINR(estimatedTax);
+  document.getElementById('kpi-tax-regime').textContent = `${latestAnalysis?.summary?.selectedRegime || 'New'} Regime`;
+  document.getElementById('kpi-total-expenses').textContent = formatINR(annualLiving + annualEmi);
+  document.getElementById('kpi-savings').textContent = formatINR(savings);
+  document.getElementById('kpi-savings-rate').textContent = `${savingsRate}% annual savings rate`;
+
+  // Render Chart
+  renderIncomeDistributionChart('income-chart-container', {
+    hasData: gross > 0,
+    grossAnnual: gross,
+    estimatedTax,
+    annualLivingExpense: annualLiving,
+    annualDebtService: annualEmi,
+    annualDiscretionarySavings: savings,
+    financialYear: incomeData.financial_year || '2026-27',
+    emptyState: { title: 'Complete income and expense details', message: 'Add income to view distribution curves.' }
+  });
+
+  // Leak Finder
+  const leaks = [];
+  if (gross <= 0) {
+    leaks.push({ icon: '⚠️', text: 'Income details are incomplete or not entered.' });
+  }
+  if (monthlyEssential <= 0) {
+    leaks.push({ icon: 'ℹ️', text: 'Essential living expenses not recorded. Adding food/rent estimates improves accuracy.' });
+  }
+  if (annualEmi > gross * 0.40 && gross > 0) {
+    leaks.push({ icon: '🚨', text: `High Debt Burden: Annual EMIs (${formatINR(annualEmi)}) consume ${((annualEmi/gross)*100).toFixed(1)}% of gross income (warning benchmark is 40%).` });
+  }
+  if (annualPremium > gross * 0.15 && gross > 0) {
+    leaks.push({ icon: '⚠️', text: `High Insurance Premiums: Total premiums (${formatINR(annualPremium)}) exceed 15% of annual income. Check for high-cost traditional/ULIP plans.` });
+  }
+  if (savings <= 0 && gross > 0) {
+    leaks.push({ icon: '⚠️', text: 'Discretionary savings are currently zero or negative. Expenses and loan commitments exhaust gross income.' });
+  }
+  if (leaks.length === 0) {
+    leaks.push({ icon: '✅', text: `Healthy Cash Flow Structure: ${savingsRate}% of gross income is preserved for investment and goal funding.` });
+  }
+
+  document.getElementById('leak-finder-list').innerHTML = leaks.map(l => `
+    <div class="leak-item">
+      <span>${l.icon}</span>
+      <span class="text-xs text-muted">${escHtml(l.text)}</span>
+    </div>
+  `).join('');
+
+  // Table
+  const rows = [
+    { label: 'Gross Inflow', classif: 'Income', annual: gross, monthly: gross / 12, pct: '100.0%' },
+    { label: 'Estimated Income Tax', classif: 'Statutory Outflow', annual: estimatedTax, monthly: estimatedTax / 12, pct: gross > 0 ? ((estimatedTax / gross) * 100).toFixed(1) + '%' : '—' },
+    { label: 'Essential Living Expenses', classif: 'Living Cost', annual: monthlyEssential * 12, monthly: monthlyEssential, pct: gross > 0 ? (((monthlyEssential * 12) / gross) * 100).toFixed(1) + '%' : '—' },
+    { label: 'Lifestyle & Discretionary Expenses', classif: 'Living Cost', annual: monthlyLifestyle * 12, monthly: monthlyLifestyle, pct: gross > 0 ? (((monthlyLifestyle * 12) / gross) * 100).toFixed(1) + '%' : '—' },
+    { label: 'Debt Payments (EMIs)', classif: 'Liability Service', annual: annualEmi, monthly: annualEmi / 12, pct: gross > 0 ? ((annualEmi / gross) * 100).toFixed(1) + '%' : '—' },
+    { label: 'Insurance Premiums', classif: 'Protection Outflow', annual: annualPremium, monthly: annualPremium / 12, pct: gross > 0 ? ((annualPremium / gross) * 100).toFixed(1) + '%' : '—' },
+    { label: 'Discretionary Investable Savings', classif: 'Surplus Savings', annual: savings, monthly: savings / 12, pct: gross > 0 ? ((savings / gross) * 100).toFixed(1) + '%' : '—' }
+  ];
+
+  document.getElementById('cashflow-table-body').innerHTML = rows.map(r => `
+    <tr>
+      <td><strong>${escHtml(r.label)}</strong></td>
+      <td><span class="badge">${escHtml(r.classif)}</span></td>
+      <td class="text-right text-mono font-semibold">${formatINR(r.annual)}</td>
+      <td class="text-right text-mono text-muted">${formatINR(r.monthly)}/mo</td>
+      <td class="text-right text-mono">${escHtml(r.pct)}</td>
+    </tr>
+  `).join('');
+}
+
+function openEditModal() {
+  document.getElementById('cf-gross').value = incomeData.gross_annual || '';
+  document.getElementById('cf-other').value = incomeData.other_income || '';
+  document.getElementById('cf-essential').value = expenseData.monthly_essential_expenses || '';
+  document.getElementById('cf-lifestyle').value = expenseData.monthly_lifestyle_expenses || '';
+  modal.classList.remove('hidden');
+}
+
+function closeModal() {
+  modal.classList.add('hidden');
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const grossVal = Number(document.getElementById('cf-gross').value);
+  const otherVal = Number(document.getElementById('cf-other').value || 0);
+  const essVal = Number(document.getElementById('cf-essential').value);
+  const lifeVal = Number(document.getElementById('cf-lifestyle').value || 0);
+
+  try {
+    await Promise.all([
+      api.income.save({ grossAnnual: grossVal, otherIncome: otherVal }),
+      api.expenses.save({ monthlyEssentialExpenses: essVal, monthlyLifestyleExpenses: lifeVal })
+    ]);
+    toast('Cash flow inputs updated successfully.', 'success');
+    closeModal();
+    await loadData();
+  } catch (err) {
+    toast(err.message || 'Failed to save cash flow data.', 'error');
+  }
+});
+
+document.getElementById('edit-cashflow-btn').addEventListener('click', openEditModal);
+document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
+
+await loadData();
+</script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile & Preferences — Financial Guidance Engine</title>
+  <meta name="description" content="Manage your personal identity, occupation, retirement age, and planning profile." />
+  <link rel="stylesheet" href="/assets/css/main.css" />
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar" aria-label="Main navigation">
+  <a class="navbar-brand" href="/dashboard.html">
+    <div class="navbar-logo">FG</div>
+    Financial Guidance Engine
+  </a>
+  <div class="navbar-actions">
+    <span id="user-chip" class="text-sm text-muted"></span>
+    <button id="logout-btn" class="btn btn-ghost btn-sm">Sign out</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar" aria-label="Sidebar navigation"></aside>
+
+  <main class="main-content" aria-label="Profile and preferences">
+    <div id="loading-view" class="loading-overlay">
+      <div class="spinner"></div>
+      <span>Loading personal profile…</span>
+    </div>
+
+    <div id="content-view" class="hidden">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+          <h1 style="font-size:1.4rem">👤 Profile & Planning Preferences</h1>
+          <p class="text-sm text-muted mt-1">Configure your personal identity, occupation profile, retirement age, and family context.</p>
+        </div>
+      </div>
+
+      <!-- Form Card -->
+      <div class="card" style="max-width:840px;">
+        <form id="profile-form">
+          <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:var(--sp-4);">Personal Identity</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="p-name" class="form-label required">Full Legal Name</label>
+              <input type="text" id="p-name" class="form-input" placeholder="e.g. Ghanshyam Sharma" required />
+            </div>
+            <div class="form-group">
+              <label for="p-dob" class="form-label required">Date of Birth</label>
+              <input type="date" id="p-dob" class="form-input" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="p-gender" class="form-label">Gender</label>
+              <select id="p-gender" class="form-select">
+                <option value="">Select Gender</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="p-marital" class="form-label">Marital Status</label>
+              <select id="p-marital" class="form-select">
+                <option value="SINGLE">Single</option>
+                <option value="MARRIED">Married</option>
+                <option value="DIVORCED">Divorced</option>
+                <option value="WIDOWED">Widowed</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="p-city" class="form-label">City</label>
+              <input type="text" id="p-city" class="form-input" placeholder="e.g. Mumbai" />
+            </div>
+            <div class="form-group">
+              <label for="p-city-tier" class="form-label">City Tier (Cost of Living)</label>
+              <select id="p-city-tier" class="form-select">
+                <option value="TIER_1">Tier 1 (Metro — Mumbai, Delhi, Bangalore, etc.)</option>
+                <option value="TIER_2">Tier 2 (Pune, Jaipur, Ahmedabad, etc.)</option>
+                <option value="TIER_3">Tier 3 / Other</option>
+              </select>
+            </div>
+          </div>
+
+          <h3 style="font-size:1.05rem;font-weight:700;margin-top:var(--sp-6);margin-bottom:var(--sp-4);">Occupation & Career</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="p-occ-type" class="form-label">Occupation Type</label>
+              <select id="p-occ-type" class="form-select">
+                <option value="SALARIED">Salaried Employee</option>
+                <option value="BUSINESS">Business Owner / Entrepreneur</option>
+                <option value="PROFESSIONAL">Self-Employed Professional (Doctor, CA, Lawyer)</option>
+                <option value="RETIRED">Retired</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="p-employer" class="form-label">Employer / Business Name</label>
+              <input type="text" id="p-employer" class="form-input" placeholder="e.g. Infosys Ltd" />
+            </div>
+          </div>
+
+          <h3 style="font-size:1.05rem;font-weight:700;margin-top:var(--sp-6);margin-bottom:var(--sp-4);">Family & Planning Parameters</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="p-dependents" class="form-label">Number of Financial Dependents</label>
+              <input type="number" id="p-dependents" class="form-input" min="0" max="20" value="0" />
+            </div>
+            <div class="form-group">
+              <label for="p-retire-age" class="form-label required">Planned Retirement Age</label>
+              <input type="number" id="p-retire-age" class="form-input" min="40" max="85" value="60" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="p-risk" class="form-label">Investment Risk Profile</label>
+            <select id="p-risk" class="form-select">
+              <option value="CONSERVATIVE">Conservative (Capital Preservation Focus)</option>
+              <option value="MODERATE" selected>Moderate (Balanced Growth & Stability)</option>
+              <option value="AGGRESSIVE">Aggressive (Maximum Long-Term Capital Growth)</option>
+            </select>
+          </div>
+
+          <div class="mt-6 flex justify-end">
+            <button type="submit" id="save-profile-btn" class="btn btn-primary">
+              💾 Save Profile Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { api } from '/assets/js/api.js';
+import { requireAuth, renderUserChip, logout } from '/assets/js/auth.js';
+import { toast } from '/assets/js/format.js';
+import { renderAppSidebar } from '/assets/js/components/sidebar.js';
+
+const user = await requireAuth();
+renderUserChip(user);
+document.getElementById('logout-btn').addEventListener('click', () => logout());
+renderAppSidebar({ activeKey: 'account-profile' });
+
+const loadingView = document.getElementById('loading-view');
+const contentView = document.getElementById('content-view');
+const form = document.getElementById('profile-form');
+
+async function load() {
+  loadingView.classList.remove('hidden');
+  contentView.classList.add('hidden');
+
+  try {
+    const profile = await api.profile.get().catch(() => ({}));
+    if (profile) {
+      document.getElementById('p-name').value = profile.full_name || '';
+      document.getElementById('p-dob').value = profile.date_of_birth ? profile.date_of_birth.split('T')[0] : '';
+      document.getElementById('p-gender').value = profile.gender || '';
+      document.getElementById('p-marital').value = profile.marital_status || 'SINGLE';
+      document.getElementById('p-city').value = profile.city || '';
+      document.getElementById('p-city-tier').value = profile.city_tier || 'TIER_1';
+      document.getElementById('p-occ-type').value = profile.occupation_type || 'SALARIED';
+      document.getElementById('p-employer').value = profile.employer_or_business_name || '';
+      document.getElementById('p-dependents').value = profile.dependents || 0;
+      document.getElementById('p-retire-age').value = profile.retirement_age || 60;
+      document.getElementById('p-risk').value = profile.risk_profile || 'MODERATE';
+    }
+  } catch (err) {
+    toast(err.message || 'Failed to load profile.', 'error');
+  } finally {
+    loadingView.classList.add('hidden');
+    contentView.classList.remove('hidden');
+  }
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('save-profile-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const payload = {
+    fullName: document.getElementById('p-name').value,
+    dateOfBirth: document.getElementById('p-dob').value,
+    gender: document.getElementById('p-gender').value,
+    maritalStatus: document.getElementById('p-marital').value,
+    city: document.getElementById('p-city').value,
+    cityTier: document.getElementById('p-city-tier').value,
+    occupationType: document.getElementById('p-occ-type').value,
+    employerOrBusinessName: document.getElementById('p-employer').value,
+    dependents: Number(document.getElementById('p-dependents').value || 0),
+    retirementAge: Number(document.getElementById('p-retire-age').value || 60),
+    riskProfile: document.getElementById('p-risk').value
+  };
+
+  try {
+    await api.profile.save(payload);
+    toast('Profile updated successfully!', 'success');
+  } catch (err) {
+    toast(err.message || 'Failed to save profile.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Save Profile Changes';
+  }
+});
+
+await load();
+</script>
+</body>
+</html>

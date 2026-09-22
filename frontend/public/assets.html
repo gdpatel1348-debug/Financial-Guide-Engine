@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assets & Portfolio — Financial Guidance Engine</title>
+  <meta name="description" content="Manage your investments, portfolio allocation, and asset clarity." />
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <style>
+    .asset-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); margin-bottom: var(--sp-6); }
+    .portfolio-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--sp-6); margin-bottom: var(--sp-6); }
+    .clarity-box {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border-2);
+      border-radius: var(--r-md);
+      padding: var(--sp-4);
+      margin-top: var(--sp-4);
+    }
+    .clarity-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.85rem; }
+    .filter-bar { display: flex; gap: var(--sp-3); margin-bottom: var(--sp-4); align-items: center; flex-wrap: wrap; }
+    .search-input { max-width: 260px; }
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar" aria-label="Main navigation">
+  <a class="navbar-brand" href="/dashboard.html">
+    <div class="navbar-logo">FG</div>
+    Financial Guidance Engine
+  </a>
+  <div class="navbar-actions">
+    <span id="user-chip" class="text-sm text-muted"></span>
+    <button id="logout-btn" class="btn btn-ghost btn-sm">Sign out</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar" aria-label="Sidebar navigation"></aside>
+
+  <main class="main-content" aria-label="Assets workspace">
+    <div id="loading-view" class="loading-overlay">
+      <div class="spinner"></div>
+      <span>Loading assets and portfolio…</span>
+    </div>
+
+    <div id="content-view" class="hidden">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+          <h1 style="font-size:1.4rem">💰 Assets & Investment Portfolio</h1>
+          <p class="text-sm text-muted mt-1">Holistic view of your investment corpus, liquidity classification, and allocation map.</p>
+        </div>
+        <div class="flex gap-3">
+          <button id="add-asset-btn" class="btn btn-primary">➕ Add Asset</button>
+        </div>
+      </div>
+
+      <!-- Asset KPIs -->
+      <div class="asset-kpis">
+        <div class="card">
+          <div class="card-title">Total Portfolio Value</div>
+          <div class="card-value text-accent" id="kpi-total-assets">₹0</div>
+          <div class="card-sub">Sum of all holdings</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Annual Contributions</div>
+          <div class="card-value text-primary" id="kpi-annual-contrib">₹0</div>
+          <div class="card-sub">Annual SIP & savings flow</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Growth Assets (Equity/MF)</div>
+          <div class="card-value" id="kpi-growth-share">0%</div>
+          <div class="card-sub" id="kpi-growth-val">₹0</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Liquid Assets (Cash/FD)</div>
+          <div class="card-value" id="kpi-liquid-share">0%</div>
+          <div class="card-sub" id="kpi-liquid-val">₹0</div>
+        </div>
+      </div>
+
+      <!-- Portfolio Map & Clarity Split -->
+      <div class="portfolio-grid">
+        <!-- Visual Allocation Card -->
+        <div id="asset-chart-container"></div>
+
+        <!-- Portfolio Clarity Card -->
+        <div class="card">
+          <h3 style="font-size:1.05rem;font-weight:600">🔍 Portfolio Clarity & Map</h3>
+          <p class="text-xs text-muted mt-1">Classification and goal alignment structure</p>
+          <div class="clarity-box">
+            <div class="clarity-item">
+              <span>Growth Assets (MF, Equity)</span>
+              <strong id="clarity-growth">₹0</strong>
+            </div>
+            <div class="clarity-item">
+              <span>Stability Assets (Debt, EPF, FD)</span>
+              <strong id="clarity-stability">₹0</strong>
+            </div>
+            <div class="clarity-item">
+              <span>Liquid Assets (Cash, Bank)</span>
+              <strong id="clarity-liquid">₹0</strong>
+            </div>
+            <div class="clarity-item">
+              <span>Illiquid / Physical (Real Estate, Gold)</span>
+              <strong id="clarity-illiquid">₹0</strong>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <h4 style="font-size:0.85rem;font-weight:600;color:var(--color-text-3);text-transform:uppercase;">Goal Alignment</h4>
+            <div class="text-xs text-muted mt-2" id="goal-link-status">
+              Checking goal links…
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter & Search Bar -->
+      <div class="filter-bar">
+        <input type="text" id="asset-search" class="form-input search-input" placeholder="Search asset or scheme…" />
+        <button class="btn btn-sm btn-primary category-btn" data-cat="ALL">All Categories</button>
+        <button class="btn btn-sm btn-ghost category-btn" data-cat="MF">Mutual Funds</button>
+        <button class="btn btn-sm btn-ghost category-btn" data-cat="EQUITY">Equity</button>
+        <button class="btn btn-sm btn-ghost category-btn" data-cat="DEBT">Debt / EPF / FD</button>
+        <button class="btn btn-sm btn-ghost category-btn" data-cat="CASH">Cash / Liquid</button>
+      </div>
+
+      <!-- Assets Table -->
+      <div class="card">
+        <div style="overflow-x:auto;">
+          <table class="chart-data-table">
+            <thead>
+              <tr>
+                <th>Asset Label / Description</th>
+                <th>Category</th>
+                <th>Liquidity</th>
+                <th class="text-right">Current Value</th>
+                <th class="text-right">Annual Contribution</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="assets-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Add/Edit Asset Modal -->
+<div id="asset-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-asset-title">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-asset-title" style="font-size:1.15rem;font-weight:700">Add Asset</h2>
+      <button id="modal-close-btn" class="btn btn-ghost btn-sm" aria-label="Close">✕</button>
+    </div>
+    <form id="asset-form">
+      <input type="hidden" id="a-id" />
+      <div class="form-row">
+        <div class="form-group">
+          <label for="a-type" class="form-label required">Asset Class</label>
+          <select id="a-type" class="form-select" required>
+            <option value="MF">Mutual Fund</option>
+            <option value="EQUITY">Direct Equity / Stocks</option>
+            <option value="DEBT">Bonds / Debt Funds</option>
+            <option value="EPF">EPF / PPF / VPF</option>
+            <option value="FD">Fixed Deposit</option>
+            <option value="GOLD">Gold / Sovereign Gold Bonds</option>
+            <option value="REAL_ESTATE">Real Estate / Property</option>
+            <option value="CASH">Savings Account / Cash</option>
+            <option value="OTHER">Other Investment</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="a-label" class="form-label required">Asset Description / Scheme</label>
+          <input type="text" id="a-label" class="form-input" placeholder="e.g. Parag Parikh Flexi Cap Fund" required />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="a-value" class="form-label required">Current Market Value (₹)</label>
+          <input type="number" id="a-value" class="form-input" placeholder="e.g. 500000" min="0" required />
+        </div>
+        <div class="form-group">
+          <label for="a-contrib" class="form-label">Annual Ongoing Contribution (₹)</label>
+          <input type="number" id="a-contrib" class="form-input" placeholder="e.g. 120000" min="0" />
+          <span class="form-hint">Annual SIP or recurring savings flow into this asset.</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="modal-cancel-btn" class="btn btn-ghost">Cancel</button>
+        <button type="submit" id="modal-save-btn" class="btn btn-primary">Save Asset</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { api } from '/assets/js/api.js';
+import { requireAuth, renderUserChip, logout } from '/assets/js/auth.js';
+import { formatINR, toast } from '/assets/js/format.js';
+import { renderAppSidebar } from '/assets/js/components/sidebar.js';
+import { renderAssetAllocationChart } from '/assets/js/components/charts.js';
+
+const user = await requireAuth();
+renderUserChip(user);
+document.getElementById('logout-btn').addEventListener('click', () => logout());
+renderAppSidebar({ activeKey: 'assets' });
+
+const loadingView = document.getElementById('loading-view');
+const contentView = document.getElementById('content-view');
+const modal = document.getElementById('asset-modal');
+const form = document.getElementById('asset-form');
+
+let assetList = [];
+let goalsList = [];
+let activeCategory = 'ALL';
+let searchQuery = '';
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function loadData() {
+  loadingView.classList.remove('hidden');
+  contentView.classList.add('hidden');
+
+  try {
+    const [assets, goals] = await Promise.all([
+      api.assets.list(),
+      api.goals.list()
+    ]);
+
+    assetList = assets || [];
+    goalsList = goals || [];
+    render();
+  } catch (err) {
+    toast(err.message || 'Failed to load assets.', 'error');
+  } finally {
+    loadingView.classList.add('hidden');
+    contentView.classList.remove('hidden');
+  }
+}
+
+function render() {
+  const totalVal = assetList.reduce((sum, a) => sum + Number(a.current_value || 0), 0);
+  const totalContrib = assetList.reduce((sum, a) => sum + Number(a.annual_contribution || 0), 0);
+
+  // Categorize
+  let growth = 0;
+  let stability = 0;
+  let liquid = 0;
+  let illiquid = 0;
+
+  for (const a of assetList) {
+    const val = Number(a.current_value || 0);
+    const type = (a.asset_type || '').toUpperCase();
+    if (['MF', 'EQUITY'].includes(type)) growth += val;
+    else if (['DEBT', 'EPF', 'FD'].includes(type)) stability += val;
+    else if (['CASH', 'LIQUID'].includes(type)) liquid += val;
+    else illiquid += val;
+  }
+
+  const growthPct = totalVal > 0 ? ((growth / totalVal) * 100).toFixed(1) : '0';
+  const liquidPct = totalVal > 0 ? ((liquid / totalVal) * 100).toFixed(1) : '0';
+
+  document.getElementById('kpi-total-assets').textContent = formatINR(totalVal);
+  document.getElementById('kpi-annual-contrib').textContent = `${formatINR(totalContrib)}/yr`;
+  document.getElementById('kpi-growth-share').textContent = `${growthPct}%`;
+  document.getElementById('kpi-growth-val').textContent = formatINR(growth);
+  document.getElementById('kpi-liquid-share').textContent = `${liquidPct}%`;
+  document.getElementById('kpi-liquid-val').textContent = formatINR(liquid);
+
+  document.getElementById('clarity-growth').textContent = formatINR(growth);
+  document.getElementById('clarity-stability').textContent = formatINR(stability);
+  document.getElementById('clarity-liquid').textContent = formatINR(liquid);
+  document.getElementById('clarity-illiquid').textContent = formatINR(illiquid);
+
+  // Goal link status
+  const linkedAssetIds = new Set();
+  for (const g of goalsList) {
+    const linked = typeof g.linked_asset_ids === 'string' ? JSON.parse(g.linked_asset_ids || '[]') : (g.linked_asset_ids || []);
+    linked.forEach(id => linkedAssetIds.add(id));
+  }
+  const linkedCount = assetList.filter(a => linkedAssetIds.has(a.id)).length;
+  document.getElementById('goal-link-status').innerHTML = `
+    <strong>${linkedCount} of ${assetList.length} assets</strong> explicitly linked to milestones.
+    ${assetList.length > linkedCount ? `<span class="text-warn">(${assetList.length - linkedCount} unlinked growth/corpus assets)</span>` : '<span class="text-accent">(Full allocation mapped)</span>'}
+  `;
+
+  // Render chart
+  const categoriesMap = [
+    { key: 'EQUITY', name: 'Equity / Mutual Funds', amount: growth, pct: growthPct },
+    { key: 'DEBT', name: 'Debt / EPF / FD', amount: stability, pct: totalVal > 0 ? ((stability / totalVal) * 100).toFixed(1) : '0' },
+    { key: 'CASH', name: 'Cash / Liquid Bank', amount: liquid, pct: liquidPct },
+    { key: 'OTHER', name: 'Real Estate / Gold / Other', amount: illiquid, pct: totalVal > 0 ? ((illiquid / totalVal) * 100).toFixed(1) : '0' }
+  ].filter(c => c.amount > 0);
+
+  renderAssetAllocationChart('asset-chart-container', {
+    hasData: assetList.length > 0,
+    totalAssets: totalVal,
+    categories: categoriesMap,
+    emptyState: { title: 'No assets entered yet', message: 'Add your investments to view allocation breakdown.' }
+  });
+
+  // Filter table
+  let filtered = assetList;
+  if (activeCategory !== 'ALL') {
+    if (activeCategory === 'DEBT') {
+      filtered = filtered.filter(a => ['DEBT', 'EPF', 'FD'].includes((a.asset_type || '').toUpperCase()));
+    } else {
+      filtered = filtered.filter(a => (a.asset_type || '').toUpperCase() === activeCategory);
+    }
+  }
+  if (searchQuery.trim()) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter(a => (a.label || '').toLowerCase().includes(q) || (a.asset_type || '').toLowerCase().includes(q));
+  }
+
+  const tbody = document.getElementById('assets-table-body');
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center py-6 text-muted">
+          ${assetList.length === 0 ? 'No assets added yet. Click "Add Asset" to start.' : 'No assets match the selected filter.'}
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(a => {
+    const type = (a.asset_type || 'OTHER').toUpperCase();
+    const isLiquid = ['CASH', 'FD', 'LIQUID'].includes(type);
+    const liquidityBadge = isLiquid ? '<span class="label-tag green">Liquid</span>' : '<span class="label-tag blue">Invested</span>';
+
+    return `
+      <tr>
+        <td><strong>${escHtml(a.label || a.asset_type)}</strong></td>
+        <td><span class="badge">${escHtml(a.asset_type)}</span></td>
+        <td>${liquidityBadge}</td>
+        <td class="text-right text-mono font-semibold">${formatINR(a.current_value)}</td>
+        <td class="text-right text-mono text-muted">${Number(a.annual_contribution) > 0 ? formatINR(a.annual_contribution) + '/yr' : '—'}</td>
+        <td class="text-center">
+          <button class="btn btn-ghost btn-sm edit-asset-btn" data-id="${escHtml(a.id)}">✏️</button>
+          <button class="btn btn-ghost btn-sm delete-asset-btn text-danger" data-id="${escHtml(a.id)}">🗑️</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Wire buttons
+  document.querySelectorAll('.edit-asset-btn').forEach(btn => {
+    btn.addEventListener('click', () => openEditModal(btn.dataset.id));
+  });
+  document.querySelectorAll('.delete-asset-btn').forEach(btn => {
+    btn.addEventListener('click', () => deleteAsset(btn.dataset.id));
+  });
+}
+
+function openAddModal() {
+  document.getElementById('modal-asset-title').textContent = 'Add Asset';
+  document.getElementById('a-id').value = '';
+  document.getElementById('a-type').value = 'MF';
+  document.getElementById('a-label').value = '';
+  document.getElementById('a-value').value = '';
+  document.getElementById('a-contrib').value = '';
+  modal.classList.remove('hidden');
+}
+
+function openEditModal(assetId) {
+  const a = assetList.find(item => item.id === assetId);
+  if (!a) return;
+
+  document.getElementById('modal-asset-title').textContent = 'Edit Asset';
+  document.getElementById('a-id').value = a.id;
+  document.getElementById('a-type').value = a.asset_type || 'OTHER';
+  document.getElementById('a-label').value = a.label || '';
+  document.getElementById('a-value').value = a.current_value || '';
+  document.getElementById('a-contrib').value = a.annual_contribution || '';
+  modal.classList.remove('hidden');
+}
+
+function closeModal() {
+  modal.classList.add('hidden');
+}
+
+async function deleteAsset(id) {
+  if (!confirm('Are you sure you want to delete this asset?')) return;
+  try {
+    await api.assets.remove(id);
+    toast('Asset deleted successfully.', 'success');
+    await loadData();
+  } catch (err) {
+    toast(err.message || 'Failed to delete asset.', 'error');
+  }
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('a-id').value;
+  const payload = {
+    assetType: document.getElementById('a-type').value,
+    label: document.getElementById('a-label').value,
+    currentValue: Number(document.getElementById('a-value').value),
+    annualContribution: Number(document.getElementById('a-contrib').value || 0)
+  };
+
+  try {
+    if (id) {
+      await api.assets.update(id, payload);
+      toast('Asset updated successfully.', 'success');
+    } else {
+      await api.assets.create(payload);
+      toast('Asset added successfully.', 'success');
+    }
+    closeModal();
+    await loadData();
+  } catch (err) {
+    toast(err.message || 'Failed to save asset.', 'error');
+  }
+});
+
+// Category filter
+document.querySelectorAll('.category-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.category-btn').forEach(b => {
+      b.classList.remove('btn-primary');
+      b.classList.add('btn-ghost');
+    });
+    btn.classList.remove('btn-ghost');
+    btn.classList.add('btn-primary');
+    activeCategory = btn.dataset.cat;
+    render();
+  });
+});
+
+document.getElementById('asset-search').addEventListener('input', (e) => {
+  searchQuery = e.target.value;
+  render();
+});
+
+document.getElementById('add-asset-btn').addEventListener('click', openAddModal);
+document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
+
+await loadData();
+</script>
+</body>
+</html>

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Financial Plan Report</title>
+  <style>
+    /* PDF Print-optimized styles */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-primary: #2563eb;
+      --color-accent:  #059669;
+      --color-warn:    #d97706;
+      --color-danger:  #dc2626;
+      --color-text:    #111827;
+      --color-text-2:  #374151;
+      --color-text-3:  #6b7280;
+      --color-border:  #e5e7eb;
+      --color-bg-alt:  #f9fafb;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      color: var(--color-text);
+      background: #fff;
+      font-size: 11pt;
+      line-height: 1.5;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page { max-width: 800px; margin: 0 auto; padding: 40px; }
+
+    /* Header */
+    .report-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--color-primary);
+    }
+    .report-brand { font-size: 1.1rem; font-weight: 700; color: var(--color-primary); }
+    .report-title { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+    .report-meta  { font-size: 9pt; color: var(--color-text-3); text-align: right; }
+
+    /* Disclaimer */
+    .disclaimer {
+      background: var(--color-bg-alt);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 9pt;
+      color: var(--color-text-3);
+      margin-bottom: 24px;
+    }
+
+    /* Section */
+    .section { margin-bottom: 28px; }
+    .section-title {
+      font-size: 10pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-primary);
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+    }
+
+    /* KV grid */
+    .kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+    .kv-item dt { font-size: 9pt; color: var(--color-text-3); }
+    .kv-item dd { font-size: 10pt; font-family: 'IBM Plex Mono', monospace; font-weight: 500; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 8px; }
+    th { background: var(--color-bg-alt); padding: 7px 10px; text-align: left; font-size: 9pt; font-weight: 600; color: var(--color-text-2); border-bottom: 1px solid var(--color-border); }
+    td { padding: 7px 10px; border-bottom: 1px solid var(--color-border); color: var(--color-text-2); }
+    td.amount { font-family: 'IBM Plex Mono', monospace; text-align: right; }
+    tr:last-child td { border-bottom: none; }
+
+    /* Regime compare */
+    .regime-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+    .regime-box {
+      background: var(--color-bg-alt);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+    }
+    .regime-box.recommended { border-color: var(--color-accent); }
+    .regime-label { font-size: 9pt; font-weight: 600; color: var(--color-text-3); text-transform: uppercase; }
+    .regime-tax   { font-size: 16pt; font-family: 'IBM Plex Mono', monospace; font-weight: 700; margin: 4px 0; }
+
+    /* Diagnostic */
+    .diag-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      border-left: 3px solid var(--color-border);
+    }
+    .diag-item.WARNING  { border-left-color: var(--color-warn);   background: #fffbeb; }
+    .diag-item.ERROR,
+    .diag-item.CRITICAL { border-left-color: var(--color-danger); background: #fef2f2; }
+    .diag-item.INFO     { border-left-color: var(--color-primary); background: #eff6ff; }
+    .diag-item.OK       { border-left-color: var(--color-accent); background: #f0fdf4; }
+    .diag-title { font-size: 10pt; font-weight: 600; }
+    .diag-exp   { font-size: 9pt;  color: var(--color-text-3); margin-top: 2px; }
+
+    /* Footer */
+    .report-footer {
+      margin-top: 40px;
+      padding-top: 16px;
+      border-top: 1px solid var(--color-border);
+      font-size: 8pt;
+      color: var(--color-text-3);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    @media print {
+      .section { page-break-inside: avoid; }
+      .diag-item { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="page" id="report-root">
+  <!-- Loading state — replaced by JS -->
+  <div id="loading" style="text-align:center;padding:60px;color:#6b7280">
+    <div style="font-size:1.5rem;margin-bottom:12px">⏳</div>
+    <div>Loading report…</div>
+  </div>
+</div>
+
+<script>
+// The server-side reportService injects __PLAN_DATA__ into this page
+// as a <script> tag with window.__PLAN_DATA__ = {...}
+// This script renders the report from that data.
+window.addEventListener('DOMContentLoaded', () => {
+  const data = window.__PLAN_DATA__;
+  if (!data) {
+    document.getElementById('loading').textContent = 'Report data not available.';
+    return;
+  }
+  renderReport(data);
+});
+
+function formatINR(val) {
+  const num = Number(val);
+  if (isNaN(num)) return '—';
+  const abs = Math.abs(num);
+  if (abs >= 1e7) return '₹' + (num/1e7).toFixed(2) + ' Cr';
+  if (abs >= 1e5) return '₹' + (num/1e5).toFixed(2) + ' L';
+  return '₹' + new Intl.NumberFormat('en-IN').format(Math.round(num));
+}
+function formatPct(val) {
+  const n = Number(val); return isNaN(n) ? '—' : (n*100).toFixed(1)+'%';
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function formatDT(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('en-IN', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); } catch { return iso; }
+}
+function sevIcon(s) {
+  switch((s||'').toUpperCase()) {
+    case 'OK': return '✅'; case 'INFO': return 'ℹ️';
+    case 'WARNING': return '⚠️'; default: return '🔴';
+  }
+}
+
+function renderReport(data) {
+  const { planRun, summary, goals, diagnostics, assumptions, overlap, provenance } = data;
+  const root = document.getElementById('report-root');
+
+  document.title = `Financial Plan Report — FY ${planRun.financialYear}`;
+
+  root.innerHTML = `
+    <!-- Header -->
+    <div class="report-header">
+      <div>
+        <div class="report-brand">Financial Guidance Engine</div>
+        <div class="report-title">Financial Plan Report</div>
+        <div style="font-size:10pt;color:#6b7280;margin-top:4px">FY ${esc(planRun.financialYear)} · Engine v${esc(planRun.engineVersion)}</div>
+      </div>
+      <div class="report-meta">
+        Plan ID: ${esc(planRun.id)}<br>
+        Generated: ${esc(formatDT(planRun.runAt))}<br>
+        Report generated: ${esc(formatDT(new Date().toISOString()))}
+      </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+      <strong>Important:</strong> This report provides indicative financial analysis under the selected assumptions and financial year configuration.
+      Results are estimates sensitive to income, returns, inflation, lifespan, and withdrawal assumptions.
+      This document is for educational and planning purposes only. It is not personalized investment advice.
+      Past performance is not indicative of future results. Review with a qualified SEBI-registered investment adviser and tax professional before making financial decisions.
+    </div>
+
+    <!-- 1. Financial Snapshot -->
+    <div class="section">
+      <div class="section-title">1. Financial Snapshot</div>
+      <div class="kv-grid">
+        <dl class="kv-item"><dt>Net Worth</dt><dd>${formatINR(summary.netWorth)}</dd></dl>
+        <dl class="kv-item"><dt>Annual Savings</dt><dd>${formatINR(summary.annualSavings)}</dd></dl>
+        <dl class="kv-item"><dt>Total Future Goal Value</dt><dd>${formatINR(summary.totalFutureGoalValue)}</dd></dl>
+        <dl class="kv-item"><dt>Total Projected Corpus</dt><dd>${formatINR(summary.totalProjectedCorpus)}</dd></dl>
+        <dl class="kv-item"><dt>Total Shortfall</dt><dd>${formatINR(summary.totalShortfall)}</dd></dl>
+        <dl class="kv-item"><dt>Selected Regime Tax</dt><dd>${formatINR(summary.selectedRegimeTax)}</dd></dl>
+      </div>
+    </div>
+
+    <!-- 2. Tax Comparison -->
+    <div class="section">
+      <div class="section-title">2. Tax Regime Comparison (FY ${esc(planRun.financialYear)})</div>
+      <div class="regime-compare">
+        <div class="regime-box${summary.recommendedRegime === 'NEW' ? ' recommended' : ''}">
+          <div class="regime-label">New Regime${summary.recommendedRegime === 'NEW' ? ' ✓ Recommended' : ''}</div>
+          <div class="regime-tax">${formatINR(summary.newRegimeTax ?? summary.selectedRegimeTax)}</div>
+        </div>
+        <div class="regime-box${summary.recommendedRegime === 'OLD' ? ' recommended' : ''}">
+          <div class="regime-label">Old Regime${summary.recommendedRegime === 'OLD' ? ' ✓ Recommended' : ''}</div>
+          <div class="regime-tax">${formatINR(summary.oldRegimeTax ?? summary.selectedRegimeTax)}</div>
+        </div>
+      </div>
+      <p style="font-size:9pt;color:#6b7280">Under selected assumptions. Review with a qualified tax adviser.</p>
+    </div>
+
+    <!-- 3. Goals -->
+    <div class="section">
+      <div class="section-title">3. Goal-by-Goal Analysis</div>
+      ${!goals || goals.length === 0 ? '<p style="color:#6b7280;font-size:10pt">No goals recorded in this plan.</p>' : `
+      <table>
+        <thead>
+          <tr>
+            <th>Goal</th>
+            <th>Today's Value</th>
+            <th>Future Value</th>
+            <th>Projected Corpus</th>
+            <th>Shortfall</th>
+            <th>Monthly SIP</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${goals.map(g => `
+            <tr>
+              <td>${esc(g.label || g.goalType)}<br><span style="font-size:8pt;color:#6b7280">${esc(g.goalType)} · ${esc(String(g.targetYear))}</span></td>
+              <td class="amount">${formatINR(g.amountInTodaysRupees)}</td>
+              <td class="amount">${formatINR(g.futureGoalValue)}</td>
+              <td class="amount">${formatINR(g.projectedCorpus)}</td>
+              <td class="amount" style="color:${Number(g.shortfall)>0?'#dc2626':'#059669'}">${Number(g.shortfall)>0?formatINR(g.shortfall):'Surplus '+formatINR(-Number(g.shortfall))}</td>
+              <td class="amount">${Number(g.shortfall)>0?formatINR(g.monthlySip)+'/mo':'—'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <p style="font-size:8pt;color:#6b7280;margin-top:6px">Future values are estimates. Monthly SIP is indicative, not a guaranteed outcome.</p>
+      `}
+    </div>
+
+    <!-- 4. Diagnostics -->
+    <div class="section">
+      <div class="section-title">4. Diagnostic Findings</div>
+      ${!diagnostics || diagnostics.length === 0
+        ? '<p style="color:#059669;font-size:10pt">✅ No diagnostic issues found.</p>'
+        : diagnostics.map(d => `
+          <div class="diag-item ${esc(d.severity)}">
+            <div style="min-width:20px">${sevIcon(d.severity)}</div>
+            <div>
+              <div class="diag-title">${esc(d.title)}</div>
+              <div class="diag-exp">${esc(d.explanation)}</div>
+              ${d.nextStep ? `<div style="font-size:9pt;color:#374151;margin-top:4px;font-style:italic">${esc(d.nextStep)}</div>` : ''}
+            </div>
+          </div>
+        `).join('')
+      }
+    </div>
+
+    <!-- 5. MF Overlap -->
+    <div class="section">
+      <div class="section-title">5. Mutual Fund Overlap</div>
+      ${!overlap || !overlap.pairs || overlap.pairs.length === 0
+        ? '<p style="color:#6b7280;font-size:10pt">No MF overlap data available for this plan.</p>'
+        : `<table>
+            <thead><tr><th>Fund A</th><th>Fund B</th><th>Overlap</th><th>Common ISINs</th><th>Status</th></tr></thead>
+            <tbody>
+              ${overlap.pairs.map(p => {
+                const pct = (parseFloat(p.overlapPct||0)*100).toFixed(1);
+                return `<tr>
+                  <td>${esc(p.schemeA)}</td>
+                  <td>${esc(p.schemeB)}</td>
+                  <td class="amount">${pct}%</td>
+                  <td style="text-align:right">${esc(String(p.commonIsins||0))}</td>
+                  <td>${parseFloat(pct)>=50?'High redundancy':parseFloat(pct)>=30?'Watch':'Healthy'}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          <p style="font-size:8pt;color:#6b7280;margin-top:6px">Holdings data as of: ${esc(overlap.asOfDate||'n/a')}. Overlap matched by normalized ISIN.</p>`
+      }
+    </div>
+
+    <!-- 6. Assumptions & Sources -->
+    <div class="section">
+      <div class="section-title">6. Assumptions &amp; Data Sources</div>
+      <p style="font-size:9pt;color:#374151;margin-bottom:12px">
+        These are configurable planning assumptions used for this analysis. They are estimates, not guarantees.
+        Recorded in this immutable snapshot for FY ${esc(planRun.financialYear)}.
+      </p>
+      ${(() => {
+        const ASSUMPTION_META = {
+          inflation_general:            { label: 'General inflation',               unit: 'per year',                     format: 'pct',    group: 'Inflation' },
+          inflation_education:          { label: 'Education inflation',             unit: 'per year',                     format: 'pct',    group: 'Inflation' },
+          inflation_medical:            { label: 'Medical inflation',               unit: 'per year',                     format: 'pct',    group: 'Inflation' },
+          inflation_lifestyle:          { label: 'Lifestyle inflation',             unit: 'per year',                     format: 'pct',    group: 'Inflation' },
+          return_equity:                { label: 'Equity expected return',          unit: 'per year',                     format: 'pct',    group: 'Return Expectations' },
+          return_debt:                  { label: 'Debt expected return',            unit: 'per year',                     format: 'pct',    group: 'Return Expectations' },
+          return_gold:                  { label: 'Gold expected return',            unit: 'per year',                     format: 'pct',    group: 'Return Expectations' },
+          return_real_estate:           { label: 'Real estate expected return',     unit: 'per year',                     format: 'pct',    group: 'Return Expectations' },
+          return_epf:                   { label: 'EPF expected return',             unit: 'per year',                     format: 'pct',    group: 'Return Expectations' },
+          return_fd:                    { label: 'Fixed deposit expected return',   unit: 'per year',                     format: 'pct',    group: 'Return Expectations' },
+          return_cash:                  { label: 'Savings / cash expected return',  unit: 'per year',                     format: 'pct',    group: 'Return Expectations' },
+          return_other:                 { label: 'Other assets expected return',    unit: 'per year',                     format: 'pct',    group: 'Return Expectations' },
+          emergency_fund_months:        { label: 'Emergency fund reference',        unit: 'months of essential expenses',  format: 'number', group: 'Diagnostic Benchmarks' },
+          term_cover_income_multiple:   { label: 'Term-cover reference',            unit: 'x annual income',              format: 'number', group: 'Diagnostic Benchmarks' },
+          debt_to_income_ratio_warning: { label: 'Debt-to-income warning level',    unit: '',                             format: 'pct',    group: 'Diagnostic Benchmarks' },
+          default_life_expectancy:      { label: 'Default life expectancy',         unit: 'years',                        format: 'number', group: 'Diagnostic Benchmarks' },
+          post_retirement_return:       { label: 'Post-retirement expected return', unit: 'per year',                     format: 'pct',    group: 'Diagnostic Benchmarks' },
+        };
+        function fmtAssump(raw, format) {
+          const n = parseFloat(raw);
+          if (isNaN(n)) return esc(String(raw));
+          if (format === 'pct') return (n * 100).toFixed(1).replace(/\.0$/, '') + '%';
+          return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, '');
+        }
+        const assumps = assumptions || {};
+        const assumpsObj = Array.isArray(assumps)
+          ? Object.fromEntries(assumps.map(a => [a.key || a.assumptionKey, a.value || a.assumptionValue]))
+          : assumps;
+        const groups = {};
+        for (const [key, val] of Object.entries(assumpsObj)) {
+          const m = ASSUMPTION_META[key];
+          const g = m?.group || 'Other';
+          if (!groups[g]) groups[g] = [];
+          groups[g].push({ key, val, m });
+        }
+        const GROUP_ORDER = ['Inflation', 'Return Expectations', 'Diagnostic Benchmarks', 'Other'];
+        return GROUP_ORDER.filter(g => groups[g]).map(groupName => `
+          <div style="margin-bottom:12px">
+            <div style="font-size:8.5pt;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280;margin-bottom:4px">${esc(groupName)}</div>
+            <table>
+              <thead><tr><th>Assumption</th><th>Value</th></tr></thead>
+              <tbody>
+                ${groups[groupName].map(({ key, val, m }) => {
+                  const label = m?.label || key.replace(/_/g, ' ');
+                  const fmtd = fmtAssump(val, m?.format || 'number');
+                  const unit = m?.unit || '';
+                  return `<tr>
+                    <td>${esc(label)}</td>
+                    <td class="amount">${esc(fmtd)}${unit ? ` <span style="font-size:8pt;font-weight:400;color:#6b7280">${esc(unit)}</span>` : ''}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `).join('');
+      })()}
+      <p style="font-size:8pt;color:#6b7280;margin-top:8px">
+        Source: Indicative planning guidelines based on historical Indian macroeconomic trends and SEBI/AMFI literature.
+        Engine v${esc(planRun.engineVersion)} · Snapshot: ${esc(formatDT(planRun.runAt))} · These assumptions cannot be altered retroactively.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="report-footer">
+      <div>Financial Guidance Engine v${esc(planRun.engineVersion)} · Plan ID: ${esc(planRun.id)}</div>
+      <div>FY ${esc(planRun.financialYear)} · This document is for educational purposes only. Not investment advice.</div>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

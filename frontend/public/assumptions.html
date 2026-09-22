@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assumptions & Data Sources — Financial Guidance Engine</title>
+  <meta name="description" content="View planning assumptions, macroeconomic rates, and benchmark data sources." />
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <style>
+    .assump-group-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-6);
+      margin-bottom: var(--sp-6);
+    }
+    .assump-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar" aria-label="Main navigation">
+  <a class="navbar-brand" href="/dashboard.html">
+    <div class="navbar-logo">FG</div>
+    Financial Guidance Engine
+  </a>
+  <div class="navbar-actions">
+    <span id="user-chip" class="text-sm text-muted"></span>
+    <button id="logout-btn" class="btn btn-ghost btn-sm">Sign out</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar" aria-label="Sidebar navigation"></aside>
+
+  <main class="main-content" aria-label="Assumptions & Data Sources">
+    <div id="loading-view" class="loading-overlay">
+      <div class="spinner"></div>
+      <span>Loading planning assumptions…</span>
+    </div>
+
+    <div id="content-view" class="hidden">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+          <h1 style="font-size:1.4rem">⚙️ Planning Assumptions & Data Sources</h1>
+          <p class="text-sm text-muted mt-1">Underlying macroeconomic rates, inflation indices, and benchmark standards used for analysis calculations.</p>
+        </div>
+        <div class="flex gap-3">
+          <span class="badge" id="meta-fy-badge">FY 2026-27</span>
+        </div>
+      </div>
+
+      <!-- Provenance Box -->
+      <div class="card mb-6" style="background:var(--color-surface-2);border-color:var(--color-border-2);">
+        <h3 style="font-size:0.95rem;font-weight:600">🏛️ Configuration Provenance & Snapshot Integrity</h3>
+        <p class="text-xs text-muted mt-1" id="assump-provenance-text">
+          Active configuration set for Indian macroeconomic planning standards. Snapshots preserve exact mathematical coefficients immutably.
+        </p>
+      </div>
+
+      <!-- Assumptions Groups -->
+      <div id="assumptions-groups-container"></div>
+
+      <!-- Disclaimers -->
+      <div class="alert alert-info">
+        <div>
+          <strong>Configurable Planning Estimates.</strong> Assumptions are derived from historical Indian macroeconomic trends and SEBI/AMFI literature.
+          They are planning estimates, not guaranteed future market returns.
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { api } from '/assets/js/api.js';
+import { requireAuth, renderUserChip, logout } from '/assets/js/auth.js';
+import { formatDateTime, toast } from '/assets/js/format.js';
+import { renderAppSidebar } from '/assets/js/components/sidebar.js';
+
+const user = await requireAuth();
+renderUserChip(user);
+document.getElementById('logout-btn').addEventListener('click', () => logout());
+renderAppSidebar({ activeKey: 'assumptions' });
+
+const loadingView = document.getElementById('loading-view');
+const contentView = document.getElementById('content-view');
+
+const ASSUMPTION_META = {
+  inflation_general:            { label: 'General Inflation',                    unit: 'per year',                     format: 'pct',    group: 'Inflation Rates' },
+  inflation_education:          { label: 'Education Inflation',                  unit: 'per year',                     format: 'pct',    group: 'Inflation Rates' },
+  inflation_medical:            { label: 'Medical Inflation',                    unit: 'per year',                     format: 'pct',    group: 'Inflation Rates' },
+  inflation_lifestyle:          { label: 'Lifestyle Inflation',                  unit: 'per year',                     format: 'pct',    group: 'Inflation Rates' },
+  return_equity:                { label: 'Equity Expected Return',               unit: 'per year',                     format: 'pct',    group: 'Asset Class Return Expectations' },
+  return_debt:                  { label: 'Debt Expected Return',                 unit: 'per year',                     format: 'pct',    group: 'Asset Class Return Expectations' },
+  return_gold:                  { label: 'Gold Expected Return',                 unit: 'per year',                     format: 'pct',    group: 'Asset Class Return Expectations' },
+  return_real_estate:           { label: 'Real Estate Expected Return',          unit: 'per year',                     format: 'pct',    group: 'Asset Class Return Expectations' },
+  return_epf:                   { label: 'EPF / VPF Expected Return',            unit: 'per year',                     format: 'pct',    group: 'Asset Class Return Expectations' },
+  return_fd:                    { label: 'Fixed Deposit Expected Return',        unit: 'per year',                     format: 'pct',    group: 'Asset Class Return Expectations' },
+  return_cash:                  { label: 'Liquid / Savings Cash Expected Return',unit: 'per year',                     format: 'pct',    group: 'Asset Class Return Expectations' },
+  return_other:                 { label: 'Other Assets Expected Return',         unit: 'per year',                     format: 'pct',    group: 'Asset Class Return Expectations' },
+  emergency_fund_months:        { label: 'Emergency Fund Reference',             unit: 'months of essential expenses', format: 'number', group: 'Diagnostic & Planning Benchmarks' },
+  term_cover_income_multiple:   { label: 'Term-Cover Reference',                 unit: 'x gross annual income',        format: 'number', group: 'Diagnostic & Planning Benchmarks' },
+  debt_to_income_ratio_warning: { label: 'Debt-to-Income Warning Level',         unit: '',                             format: 'pct',    group: 'Diagnostic & Planning Benchmarks' },
+  default_life_expectancy:      { label: 'Default Life Expectancy',              unit: 'years',                        format: 'number', group: 'Diagnostic & Planning Benchmarks' },
+  post_retirement_return:       { label: 'Post-Retirement Return',               unit: 'per year',                     format: 'pct',    group: 'Diagnostic & Planning Benchmarks' },
+};
+
+function formatVal(raw, format) {
+  const num = parseFloat(raw);
+  if (isNaN(num)) return String(raw);
+  if (format === 'pct') return (num * 100).toFixed(1).replace(/\.0$/, '') + '%';
+  if (format === 'number') return Number.isInteger(num) ? String(num) : num.toFixed(1).replace(/\.0$/, '');
+  return String(raw);
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function load() {
+  loadingView.classList.remove('hidden');
+  contentView.classList.add('hidden');
+
+  try {
+    const history = await api.analysis.history();
+    let plan;
+    if (history && history.length > 0) {
+      plan = await api.analysis.get(history[0].id);
+    } else {
+      const runRes = await api.analysis.run();
+      plan = await api.analysis.get(runRes.planRun.id);
+    }
+
+    render(plan);
+  } catch (err) {
+    toast(err.message || 'Failed to load assumptions.', 'error');
+  } finally {
+    loadingView.classList.add('hidden');
+    contentView.classList.remove('hidden');
+  }
+}
+
+function render(plan) {
+  const assumps = plan?.assumptions || plan?.assumptionsUsed || {};
+  const planRun = plan?.planRun || {};
+
+  document.getElementById('meta-fy-badge').textContent = `FY ${planRun.financialYear || '2026-27'}`;
+  document.getElementById('assump-provenance-text').innerHTML = `
+    Active Financial Year: <strong>FY ${escHtml(planRun.financialYear || '2026-27')}</strong> ·
+    Engine Version: <strong>v${escHtml(planRun.engineVersion || '1.0.0')}</strong> ·
+    Snapshot Timestamp: <strong>${escHtml(formatDateTime(planRun.runAt))}</strong>
+  `;
+
+  const groups = {};
+  for (const [key, rawValue] of Object.entries(assumps)) {
+    const meta = ASSUMPTION_META[key];
+    const groupName = meta?.group || 'Other Benchmarks';
+    if (!groups[groupName]) groups[groupName] = [];
+    groups[groupName].push({ key, rawValue, meta });
+  }
+
+  const ORDER = ['Inflation Rates', 'Asset Class Return Expectations', 'Diagnostic & Planning Benchmarks', 'Other Benchmarks'];
+  const orderedGroups = ORDER.filter(g => groups[g]);
+
+  const container = document.getElementById('assumptions-groups-container');
+  container.innerHTML = orderedGroups.map(groupName => {
+    const items = groups[groupName];
+    const rowsHtml = items.map(({ key, rawValue, meta }) => {
+      const label = meta?.label || key.replace(/_/g, ' ');
+      const formatted = formatVal(rawValue, meta?.format || 'number');
+      const unit = meta?.unit || '';
+
+      return `
+        <div class="assump-row">
+          <div>
+            <span style="font-size:0.9rem;font-weight:500;">${escHtml(label)}</span>
+            <div class="text-xs text-muted">Key: <code>${escHtml(key)}</code></div>
+          </div>
+          <div class="text-right">
+            <span class="text-mono font-bold" style="font-size:1.05rem;">${escHtml(formatted)}</span>
+            ${unit ? `<span class="text-xs text-muted ml-2">${escHtml(unit)}</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="assump-group-card">
+        <h3 style="font-size:1.05rem;font-weight:700;color:var(--color-primary);margin-bottom:var(--sp-3);">${escHtml(groupName)}</h3>
+        ${rowsHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+await load();
+</script>
+</body>
+</html>

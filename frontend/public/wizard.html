@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Financial Intake Wizard — Financial Guidance Engine</title>
+  <meta name="description" content="Enter your financial data — personal profile, occupation, income, tax inputs, expenses, assets, insurance, liabilities, goals, and review before running analysis." />
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <style>
+    body { background: var(--color-bg); }
+    .wizard-root {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: var(--sp-8) var(--sp-6);
+    }
+    .wizard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--sp-6);
+    }
+    .wizard-title-area h1 { font-size: 1.4rem; margin-bottom: 2px; }
+    .step-panel { display: none; }
+    .step-panel.active { display: block; }
+    .step-heading {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: var(--sp-2);
+    }
+    .step-desc {
+      font-size: 0.875rem;
+      color: var(--color-text-2);
+      margin-bottom: var(--sp-6);
+    }
+    .form-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-6);
+      margin-bottom: var(--sp-4);
+    }
+    .form-card-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--color-text-3);
+      margin-bottom: var(--sp-5);
+    }
+    .wizard-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: var(--sp-8);
+    }
+    .list-items-container {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-3);
+    }
+    .list-item-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-4);
+      background: var(--color-bg-alt);
+      border: 1px solid var(--color-border);
+      border-radius: var(--r-md);
+      padding: var(--sp-4) var(--sp-5);
+    }
+    .list-item-label { font-size: 0.88rem; font-weight: 500; }
+    .list-item-sub   { font-size: 0.78rem; color: var(--color-text-3); }
+    .list-item-value { font-family: var(--font-mono); font-size: 0.88rem; color: var(--color-text-2); }
+    .add-form-toggle { margin-top: var(--sp-4); }
+
+    .review-section { margin-bottom: var(--sp-6); }
+    .review-kv {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-2) var(--sp-6);
+      margin-top: var(--sp-3);
+    }
+    .review-kv dt { font-size: 0.82rem; color: var(--color-text-3); }
+    .review-kv dd { font-size: 0.88rem; font-family: var(--font-mono); color: var(--color-text); }
+    .review-warnings { margin-top: var(--sp-4); }
+    .warning-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--sp-2);
+      font-size: 0.82rem;
+      color: var(--color-warn);
+      margin-bottom: var(--sp-2);
+    }
+
+    .step-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--sp-6);
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      min-width: 60px;
+    }
+    .step-circle {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--color-surface);
+      border: 2px solid var(--color-border-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--color-text-3);
+    }
+    .step-item.active .step-circle {
+      border-color: var(--color-primary);
+      background: var(--color-primary);
+      color: #fff;
+    }
+    .step-item.done .step-circle {
+      border-color: var(--color-accent);
+      background: var(--color-accent);
+      color: #fff;
+    }
+    .step-label { font-size: 0.7rem; font-weight: 500; color: var(--color-text-3); }
+    .step-item.active .step-label { color: var(--color-primary); font-weight: 600; }
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar" aria-label="Main navigation">
+  <a class="navbar-brand" href="/dashboard.html">
+    <div class="navbar-logo">FG</div>
+    Financial Guidance Engine
+  </a>
+  <div class="navbar-actions">
+    <a href="/dashboard.html" class="btn btn-outline btn-sm" id="nav-dashboard-link" style="text-decoration: none;">
+      📊 Dashboard
+    </a>
+    <span id="autosave-status" aria-live="polite">
+      <span class="status-dot">●</span> <span class="status-text">Draft saved</span>
+    </span>
+    <span id="user-chip" class="text-sm text-muted"></span>
+    <button id="logout-btn" class="btn btn-ghost btn-sm">Sign out</button>
+  </div>
+</nav>
+
+<div class="wizard-root">
+  <div class="wizard-header">
+    <div class="wizard-title-area">
+      <h1>Financial Intake Wizard</h1>
+      <p class="text-muted text-sm">Complete each step. Your data is saved into normalized database tables.</p>
+    </div>
+    <div class="wizard-header-actions">
+      <a href="/dashboard.html" class="btn btn-outline btn-sm" id="header-dashboard-link" style="text-decoration: none;">
+        🏠 Back to Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- Step progress bar -->
+  <div class="step-bar" role="list" aria-label="Wizard steps">
+    <div class="step-item active" role="listitem" data-step="0"><div class="step-circle">1</div><div class="step-label">Profile</div></div>
+    <div class="step-item" role="listitem" data-step="1"><div class="step-circle">2</div><div class="step-label">Work</div></div>
+    <div class="step-item" role="listitem" data-step="2"><div class="step-circle">3</div><div class="step-label">Income & Tax</div></div>
+    <div class="step-item" role="listitem" data-step="3"><div class="step-circle">4</div><div class="step-label">Expenses</div></div>
+    <div class="step-item" role="listitem" data-step="4"><div class="step-circle">5</div><div class="step-label">Assets</div></div>
+    <div class="step-item" role="listitem" data-step="5"><div class="step-circle">6</div><div class="step-label">Insurance</div></div>
+    <div class="step-item" role="listitem" data-step="6"><div class="step-circle">7</div><div class="step-label">Liabilities</div></div>
+    <div class="step-item" role="listitem" data-step="7"><div class="step-circle">8</div><div class="step-label">Goals</div></div>
+    <div class="step-item" role="listitem" data-step="8"><div class="step-circle">9</div><div class="step-label">Review</div></div>
+  </div>
+
+  <!-- STEP 1: Personal Profile -->
+  <section id="step-0" class="step-panel active" aria-labelledby="step0-heading">
+    <h2 class="step-heading" id="step0-heading">Personal Profile</h2>
+    <p class="step-desc">Personal identity details used for plan context and life event projections.</p>
+    <div class="form-card">
+      <form id="profile-form" novalidate>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="p-name">Full name *</label>
+            <input id="p-name" class="input" type="text" required placeholder="Priya Verma" autocomplete="name" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="p-display-name">Preferred display name</label>
+            <input id="p-display-name" class="input" type="text" placeholder="Priya" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="p-dob">Date of birth * <span class="text-dimmer text-xs">(YYYY-MM-DD)</span></label>
+            <input id="p-dob" class="input" type="date" required autocomplete="bday" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="p-gender">Gender</label>
+            <select id="p-gender" class="select">
+              <option value="">Prefer not to say</option>
+              <option value="FEMALE">Female</option>
+              <option value="MALE">Male</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="p-marital">Marital status</label>
+            <select id="p-marital" class="select">
+              <option value="SINGLE">Single</option>
+              <option value="MARRIED" selected>Married</option>
+              <option value="DIVORCED">Divorced</option>
+              <option value="WIDOWED">Widowed</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="p-city">City & State</label>
+            <div class="grid-2">
+              <input id="p-city" class="input" type="text" placeholder="Mumbai" />
+              <input id="p-state" class="input" type="text" placeholder="Maharashtra" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="p-retirement-age">Target retirement age</label>
+            <input id="p-retirement-age" class="input" type="number" min="40" max="90" placeholder="60" value="60" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="p-dependents">Number of dependents</label>
+            <input id="p-dependents" class="input" type="number" min="0" max="20" placeholder="2" value="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="p-risk-profile">Risk profile</label>
+            <select id="p-risk-profile" class="select">
+              <option value="CONSERVATIVE">Conservative</option>
+              <option value="MODERATE" selected>Moderate</option>
+              <option value="AGGRESSIVE">Aggressive</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="p-city-tier">City tier benchmark</label>
+            <select id="p-city-tier" class="select">
+              <option value="1">Tier 1 (Mumbai, Delhi, Bengaluru…)</option>
+              <option value="2" selected>Tier 2</option>
+              <option value="3">Tier 3</option>
+            </select>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- STEP 2: Work & Occupation -->
+  <section id="step-1" class="step-panel" aria-labelledby="step1-heading">
+    <h2 class="step-heading" id="step1-heading">Work &amp; Occupation</h2>
+    <p class="step-desc">Employment and business details used for income stability context.</p>
+    <div class="form-card">
+      <form id="occupation-form" novalidate>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="occ-type">Occupation type</label>
+            <select id="occ-type" class="select">
+              <option value="SALARIED" selected>Salaried Employee</option>
+              <option value="SELF_EMPLOYED">Self Employed</option>
+              <option value="BUSINESS_OWNER">Business Owner</option>
+              <option value="PROFESSIONAL">Professional (Doctor, CA, Lawyer…)</option>
+              <option value="RETIRED">Retired</option>
+              <option value="STUDENT">Student</option>
+              <option value="HOMEMAKER">Homemaker</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="occ-employer">Employer or business name</label>
+            <input id="occ-employer" class="input" type="text" placeholder="e.g. TCS / Self-employed" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="occ-title">Job title / Industry type</label>
+            <input id="occ-title" class="input" type="text" placeholder="Software Engineer" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="occ-start-year">Career / business start year</label>
+            <input id="occ-start-year" class="input" type="number" min="1960" max="2026" placeholder="2015" />
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- STEP 3: Income & Tax Inputs -->
+  <section id="step-2" class="step-panel" aria-labelledby="step2-heading">
+    <h2 class="step-heading" id="step2-heading">Income &amp; Tax Inputs</h2>
+    <p class="step-desc">Income details and tax deductions for FY 2026-27. Tax is calculated dynamically by the engine.</p>
+    <div class="form-card">
+      <form id="income-form" novalidate>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="i-financial-year">Financial year</label>
+            <input id="i-financial-year" class="input" type="text" value="2026-27" readonly />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="i-regime">Tax regime opted</label>
+            <select id="i-regime" class="select">
+              <option value="NEW" selected>New Tax Regime (default)</option>
+              <option value="OLD">Old Tax Regime</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="i-gross-salary">Gross annual salary / business income (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="i-gross-salary" class="input" type="number" min="0" placeholder="1800000" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="i-net-salary">Net annual in-hand income (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="i-net-salary" class="input" type="number" min="0" placeholder="1400000" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="i-rental-income">Rental income (annual, ₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="i-rental-income" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="i-other-income">Other income (interest, dividend, etc. ₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="i-other-income" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+          </div>
+        </div>
+        <hr class="divider" />
+        <div class="form-card-title">User Tax Inputs &amp; Deductions</div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="t-deduction-80c">Section 80C deductions (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="t-deduction-80c" class="input" type="number" min="0" max="150000" placeholder="0" value="0" /></div>
+            <span class="form-hint">Max ₹1.5L (EPF, PPF, ELSS)</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="t-deduction-80d">Section 80D health insurance (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="t-deduction-80d" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="t-home-loan-interest">Home loan interest deduction (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="t-home-loan-interest" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="t-tds-paid">TDS / Advance tax paid (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="t-tds-paid" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- STEP 4: Expenses & Cash Flow -->
+  <section id="step-3" class="step-panel" aria-labelledby="step3-heading">
+    <h2 class="step-heading" id="step3-heading">Expenses &amp; Cash Flow</h2>
+    <p class="step-desc">Monthly expense breakdown. Used for cash flow, emergency fund targets, and retirement decumulation.</p>
+    <div class="form-card">
+      <form id="expenses-form" novalidate>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="exp-essential">Monthly essential expenses (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-essential" class="input" type="number" min="0" placeholder="40000" /></div>
+            <span class="form-hint">Groceries, utilities, rent</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="exp-lifestyle">Monthly lifestyle &amp; leisure (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-lifestyle" class="input" type="number" min="0" placeholder="15000" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="exp-education">Monthly education expenses (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-education" class="input" type="number" min="0" placeholder="10000" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="exp-medical">Monthly medical &amp; wellness (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-medical" class="input" type="number" min="0" placeholder="5000" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="exp-debt">Monthly loan EMIs / debt (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-debt" class="input" type="number" min="0" placeholder="25000" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="exp-other">Other recurring monthly expenses (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-other" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- STEP 5: Assets -->
+  <section id="step-4" class="step-panel" aria-labelledby="step4-heading">
+    <h2 class="step-heading" id="step4-heading">Asset Holdings</h2>
+    <p class="step-desc">List investment assets only. These are projected forward to calculate future corpus growth.</p>
+    <div id="assets-list" class="list-items-container"></div>
+    <div class="form-card add-form-toggle mt-4">
+      <div class="form-card-title">Add Asset Holding</div>
+      <form id="asset-form" novalidate>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="a-label">Label</label>
+            <input id="a-label" class="input" type="text" placeholder="e.g. HDFC Flexi Cap Fund" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="a-class">Asset class</label>
+            <select id="a-class" class="select">
+              <option value="EQUITY_MF">Equity Mutual Fund</option>
+              <option value="DEBT_MF">Debt Mutual Fund</option>
+              <option value="DIRECT_EQUITY">Direct Equity</option>
+              <option value="PPF">PPF</option>
+              <option value="EPF">EPF</option>
+              <option value="FD">Fixed Deposit</option>
+              <option value="REAL_ESTATE">Real Estate</option>
+              <option value="GOLD">Gold</option>
+              <option value="LIQUID">Liquid / Cash</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="a-current-value">Current market value (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="a-current-value" class="input" type="number" min="0" placeholder="500000" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="a-annual-contribution">Annual contribution (SIP / annual deposit, ₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="a-annual-contribution" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-outline mt-4">+ Add Asset Holding</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- STEP 6: Insurance -->
+  <section id="step-5" class="step-panel" aria-labelledby="step5-heading">
+    <h2 class="step-heading" id="step5-heading">Insurance &amp; Policies</h2>
+    <p class="step-desc">Life, health, and critical illness policies. Used to evaluate insurance adequacy.</p>
+    <div id="insurance-list" class="list-items-container"></div>
+    <div class="form-card add-form-toggle mt-4">
+      <div class="form-card-title">Add Policy Record</div>
+      <form id="insurance-form" novalidate>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="ins-name">Policy name</label>
+            <input id="ins-name" class="input" type="text" placeholder="Click 2 Protect Super" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ins-label">Insurer</label>
+            <input id="ins-label" class="input" type="text" placeholder="HDFC Life" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ins-type">Policy type</label>
+            <select id="ins-type" class="select">
+              <option value="TERM_LIFE">Term Life</option>
+              <option value="HEALTH">Health</option>
+              <option value="ULIP">ULIP</option>
+              <option value="ENDOWMENT">Endowment</option>
+              <option value="CRITICAL_ILLNESS">Critical Illness</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ins-cover">Sum assured / Cover (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="ins-cover" class="input" type="number" min="0" placeholder="15000000" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ins-premium">Annual premium (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="ins-premium" class="input" type="number" min="0" placeholder="18000" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ins-expiry">Policy maturity / expiry year</label>
+            <input id="ins-expiry" class="input" type="number" min="2024" max="2100" placeholder="2050" />
+          </div>
+        </div>
+        <div class="flex gap-4 mt-3">
+          <label><input type="checkbox" id="ins-pure-term" checked /> Pure Term Insurance</label>
+          <label><input type="checkbox" id="ins-active" checked /> Active Policy</label>
+        </div>
+        <button type="submit" class="btn btn-outline mt-4">+ Add Policy</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- STEP 7: Liabilities -->
+  <section id="step-6" class="step-panel" aria-labelledby="step6-heading">
+    <h2 class="step-heading" id="step6-heading">Liabilities &amp; Debt</h2>
+    <p class="step-desc">Outstanding loans and EMIs. Used for net-worth calculation and debt burden diagnostics.</p>
+    <div id="liabilities-list" class="list-items-container"></div>
+    <div class="form-card add-form-toggle mt-4">
+      <div class="form-card-title">Add Debt Record</div>
+      <form id="liability-form" novalidate>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="l-lender">Lender / Bank name</label>
+            <input id="l-lender" class="input" type="text" placeholder="State Bank of India" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="l-type">Loan type</label>
+            <select id="l-type" class="select">
+              <option value="HOME_LOAN">Home Loan</option>
+              <option value="CAR_LOAN">Car Loan</option>
+              <option value="PERSONAL_LOAN">Personal Loan</option>
+              <option value="EDUCATION_LOAN">Education Loan</option>
+              <option value="CREDIT_CARD">Credit Card</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="l-outstanding">Outstanding balance (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="l-outstanding" class="input" type="number" min="0" placeholder="3500000" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="l-emi">Monthly EMI (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="l-emi" class="input" type="number" min="0" placeholder="32000" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="l-rate">Interest rate (annual %)</label>
+            <input id="l-rate" class="input" type="number" min="0" max="60" step="0.01" placeholder="8.5" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="l-tenure">Remaining tenure (months)</label>
+            <input id="l-tenure" class="input" type="number" min="0" placeholder="180" />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-outline mt-4">+ Add Loan Record</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- STEP 8: Goals -->
+  <section id="step-7" class="step-panel" aria-labelledby="step7-heading">
+    <h2 class="step-heading" id="step7-heading">Financial Goals</h2>
+    <p class="step-desc">Define each goal in today's rupees. The engine applies inflation and calculates future target value &amp; indicative SIP.</p>
+    <div id="goals-list" class="list-items-container"></div>
+    <div class="form-card add-form-toggle mt-4">
+      <div class="form-card-title">Add Goal</div>
+      <form id="goal-form" novalidate>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="g-label">Goal label</label>
+            <input id="g-label" class="input" type="text" placeholder="e.g. Higher Education for Child" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="g-type">Goal type</label>
+            <select id="g-type" class="select">
+              <option value="RETIREMENT">Retirement</option>
+              <option value="CHILD_EDUCATION">Child Education</option>
+              <option value="MARRIAGE">Marriage</option>
+              <option value="HOME">Home Purchase</option>
+              <option value="TRAVEL">Travel / Vacation</option>
+              <option value="MEDICAL">Medical Emergency</option>
+              <option value="EMERGENCY_FUND">Emergency Reserve</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="g-amount">Target amount in today's rupees (₹)</label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="g-amount" class="input" type="number" min="0" placeholder="2000000" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="g-target-year">Target year</label>
+            <input id="g-target-year" class="input" type="number" min="2026" max="2100" placeholder="2036" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="g-priority">Priority (1 = Highest)</label>
+            <input id="g-priority" class="input" type="number" min="1" max="100" placeholder="1" value="1" />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-outline mt-4">+ Add Goal</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- STEP 9: Review & Run Analysis -->
+  <section id="step-8" class="step-panel" aria-labelledby="step8-heading">
+    <h2 class="step-heading" id="step8-heading">Review &amp; Run Analysis</h2>
+    <p class="step-desc">Review your entered financial profile and active configuration before orchestrating analysis.</p>
+    <div class="form-card">
+      <div class="form-card-title">Normalized Data Summary</div>
+      <dl class="review-kv" id="review-summary"></dl>
+      <div id="review-warnings" class="review-warnings"></div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title">Engine Configuration</div>
+      <div id="assumptions-list"></div>
+    </div>
+    <div class="flex justify-between items-center mt-6">
+      <span class="text-xs text-dimmer">Clicking Run Analysis stores an immutable snapshot in plan_runs.</span>
+      <button id="run-analysis-btn" class="btn btn-primary btn-lg">🚀 Run Analysis</button>
+    </div>
+    <div id="run-status" class="mt-4"></div>
+  </section>
+
+  <!-- Wizard Navigation Buttons -->
+  <div class="wizard-nav">
+    <button id="prev-btn" class="btn btn-ghost" disabled>← Previous</button>
+    <span class="text-xs text-dimmer" id="step-indicator">Step 1 of 9</span>
+    <button id="next-btn" class="btn btn-primary">Next Step →</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { api } from '/assets/js/api.js';
+import { requireAuth, renderUserChip, logout } from '/assets/js/auth.js';
+import { formatINR, toast } from '/assets/js/format.js';
+import { renderAppSidebar } from '/assets/js/components/sidebar.js';
+
+const user = await requireAuth();
+renderUserChip(user);
+document.getElementById('logout-btn').addEventListener('click', () => logout());
+renderAppSidebar({ activeKey: 'wizard' });
+
+const TOTAL_STEPS = 9;
+let currentStep = 0;
+let assets = [];
+let insurance = [];
+let liabilities = [];
+let goals = [];
+let autosaveTimer = null;
+const AUTOSAVE_DELAY = 1200;
+
+function showStep(stepIdx) {
+  currentStep = Math.max(0, Math.min(TOTAL_STEPS - 1, stepIdx));
+  document.querySelectorAll('.step-panel').forEach((el, idx) => {
+    el.classList.toggle('active', idx === currentStep);
+  });
+  document.querySelectorAll('.step-item').forEach((el, idx) => {
+    el.classList.toggle('active', idx === currentStep);
+    el.classList.toggle('done', idx < currentStep);
+  });
+
+  document.getElementById('prev-btn').disabled = currentStep === 0;
+  const nextBtn = document.getElementById('next-btn');
+  if (currentStep === TOTAL_STEPS - 1) {
+    nextBtn.style.display = 'none';
+  } else {
+    nextBtn.style.display = 'inline-flex';
+    nextBtn.textContent = 'Next Step →';
+  }
+
+  document.getElementById('step-indicator').textContent = `Step ${currentStep + 1} of ${TOTAL_STEPS}`;
+
+  if (currentStep === TOTAL_STEPS - 1) {
+    populateReview();
+  }
+}
+
+document.querySelectorAll('.step-item').forEach(item => {
+  item.addEventListener('click', async () => {
+    const target = Number(item.dataset.step);
+    if (target > currentStep) {
+      const ok = await validateAndSaveCurrentStep();
+      if (ok) showStep(target);
+    } else {
+      showStep(target);
+    }
+  });
+});
+
+document.getElementById('prev-btn').addEventListener('click', () => showStep(currentStep - 1));
+document.getElementById('next-btn').addEventListener('click', async () => {
+  const ok = await validateAndSaveCurrentStep();
+  if (ok) showStep(currentStep + 1);
+});
+
+function setFieldError(inputId, message) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  el.classList.add('error');
+  let group = el.closest('.form-group') || el.parentElement;
+  let errEl = group.querySelector(`.form-error[data-for="${inputId}"]`);
+  if (!errEl) {
+    errEl = document.createElement('span');
+    errEl.className = 'form-error';
+    errEl.dataset.for = inputId;
+    group.appendChild(errEl);
+  }
+  errEl.textContent = message;
+  errEl.style.display = 'block';
+}
+
+function clearFieldErrors(stepId) {
+  const panel = document.getElementById(stepId);
+  if (!panel) return;
+  panel.querySelectorAll('.input.error, .select.error').forEach(el => el.classList.remove('error'));
+  panel.querySelectorAll('.form-error[data-for]').forEach(el => { el.textContent = ''; el.style.display = 'none'; });
+}
+
+function setAutosaveStatus(state, text) {
+  const el = document.getElementById('autosave-status');
+  el.className = state;
+  el.querySelector('.status-text').textContent = text;
+}
+
+function scheduleAutosave(saveFn) {
+  clearTimeout(autosaveTimer);
+  setAutosaveStatus('saving', 'Saving…');
+  autosaveTimer = setTimeout(async () => {
+    try {
+      await saveFn();
+      setAutosaveStatus('saved', 'Draft saved');
+    } catch (e) {
+      setAutosaveStatus('error', 'Save failed');
+    }
+  }, AUTOSAVE_DELAY);
+}
+
+function cityTierToEnum(numericVal) {
+  const n = Number(numericVal);
+  if (n === 1) return 'TIER_1';
+  if (n === 3) return 'TIER_3';
+  return 'TIER_2';
+}
+
+function assetClassToType(cls) {
+  const map = {
+    EQUITY_MF: 'MF', DEBT_MF: 'MF', DIRECT_EQUITY: 'EQUITY',
+    PPF: 'PPF', EPF: 'EPF', FD: 'FD',
+    REAL_ESTATE: 'REAL_ESTATE', GOLD: 'GOLD', LIQUID: 'CASH', OTHER: 'OTHER'
+  };
+  return map[cls] || 'OTHER';
+}
+
+function insTypeToBackend(t) {
+  const map = {
+    TERM_LIFE: 'TERM', HEALTH: 'HEALTH', ULIP: 'ULIP',
+    ENDOWMENT: 'ENDOWMENT', CRITICAL_ILLNESS: 'OTHER', OTHER: 'OTHER'
+  };
+  return map[t] || 'OTHER';
+}
+
+function getNormalizedDob() {
+  const input = document.getElementById('p-dob');
+  let val = (input?.value || '').trim();
+  const ddmmyyyy = val.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (ddmmyyyy) {
+    val = `${ddmmyyyy[3]}-${ddmmyyyy[2].padStart(2, '0')}-${ddmmyyyy[1].padStart(2, '0')}`;
+    try { input.value = val; } catch {}
+  }
+  return val;
+}
+
+function validateProfile() {
+  clearFieldErrors('step-0');
+  let ok = true;
+  const name = document.getElementById('p-name').value.trim();
+  if (!name) { setFieldError('p-name', 'Full name is required.'); ok = false; }
+  const dob = getNormalizedDob();
+  if (!dob) { setFieldError('p-dob', 'Date of birth is required.'); ok = false; }
+  return ok;
+}
+
+async function loadProfile() {
+  try {
+    const d = await api.profile.get();
+    if (!d) return;
+    if (d.full_name || d.fullName) document.getElementById('p-name').value = d.full_name || d.fullName;
+    if (d.display_name || d.displayName) document.getElementById('p-display-name').value = d.display_name || d.displayName;
+    if (d.date_of_birth || d.dateOfBirth) document.getElementById('p-dob').value = d.date_of_birth || d.dateOfBirth;
+    if (d.gender) document.getElementById('p-gender').value = d.gender;
+    if (d.marital_status || d.maritalStatus) document.getElementById('p-marital').value = d.marital_status || d.maritalStatus;
+    if (d.city) document.getElementById('p-city').value = d.city;
+    if (d.state) document.getElementById('p-state').value = d.state;
+    if (d.retirement_age || d.retirementAge) document.getElementById('p-retirement-age').value = d.retirement_age || d.retirementAge;
+    if (d.dependents != null) document.getElementById('p-dependents').value = d.dependents;
+    if (d.risk_profile || d.riskProfile) document.getElementById('p-risk-profile').value = d.risk_profile || d.riskProfile;
+    if (d.city_tier || d.cityTier) document.getElementById('p-city-tier').value = (d.city_tier === 'TIER_1' ? '1' : d.city_tier === 'TIER_3' ? '3' : '2');
+    if (d.occupation_type || d.occupationType) document.getElementById('occ-type').value = d.occupation_type || d.occupationType;
+    if (d.employer_or_business_name || d.employerOrBusinessName) document.getElementById('occ-employer').value = d.employer_or_business_name || d.employerOrBusinessName;
+    if (d.job_title_or_business_type || d.jobTitleOrBusinessType) document.getElementById('occ-title').value = d.job_title_or_business_type || d.jobTitleOrBusinessType;
+    if (d.employment_start_year || d.employmentStartYear) document.getElementById('occ-start-year').value = d.employment_start_year || d.employmentStartYear;
+  } catch {}
+}
+
+async function saveProfile() {
+  return api.profile.save({
+    fullName: document.getElementById('p-name').value.trim(),
+    displayName: document.getElementById('p-display-name').value.trim(),
+    dateOfBirth: getNormalizedDob(),
+    gender: document.getElementById('p-gender').value,
+    maritalStatus: document.getElementById('p-marital').value,
+    city: document.getElementById('p-city').value.trim(),
+    state: document.getElementById('p-state').value.trim(),
+    retirementAge: Number(document.getElementById('p-retirement-age').value) || 60,
+    dependents: Number(document.getElementById('p-dependents').value) || 0,
+    riskProfile: document.getElementById('p-risk-profile').value,
+    cityTier: cityTierToEnum(document.getElementById('p-city-tier').value),
+    occupationType: document.getElementById('occ-type').value,
+    employerOrBusinessName: document.getElementById('occ-employer').value.trim(),
+    jobTitleOrBusinessType: document.getElementById('occ-title').value.trim(),
+    employmentStartYear: Number(document.getElementById('occ-start-year').value) || undefined
+  });
+}
+document.getElementById('profile-form').addEventListener('input', () => scheduleAutosave(saveProfile));
+document.getElementById('occupation-form').addEventListener('input', () => scheduleAutosave(saveProfile));
+
+async function loadIncomeAndTax() {
+  try {
+    const inc = await api.income.get();
+    if (inc) {
+      if (inc.gross_annual || inc.grossAnnual) document.getElementById('i-gross-salary').value = inc.gross_annual || inc.grossAnnual;
+      if (inc.net_annual || inc.netAnnual) document.getElementById('i-net-salary').value = inc.net_annual || inc.netAnnual;
+      if (inc.rental_income || inc.rentalIncome) document.getElementById('i-rental-income').value = inc.rental_income || inc.rentalIncome;
+      if (inc.other_income || inc.otherIncome) document.getElementById('i-other-income').value = inc.other_income || inc.otherIncome;
+      if (inc.regime_opted || inc.regimeOpted) document.getElementById('i-regime').value = inc.regime_opted || inc.regimeOpted;
+    }
+    const tax = await api.taxInputs.get();
+    if (tax) {
+      if (tax.section_80c_deductions || tax.section80cDeductions) document.getElementById('t-deduction-80c').value = tax.section_80c_deductions || tax.section80cDeductions;
+      if (tax.section_80d_deductions || tax.section80dDeductions) document.getElementById('t-deduction-80d').value = tax.section_80d_deductions || tax.section80dDeductions;
+      if (tax.home_loan_interest_deduction || tax.homeLoanInterestDeduction) document.getElementById('t-home-loan-interest').value = tax.home_loan_interest_deduction || tax.homeLoanInterestDeduction;
+      if (tax.tds_paid || tax.tdsPaid) document.getElementById('t-tds-paid').value = tax.tds_paid || tax.tdsPaid;
+    }
+  } catch {}
+}
+
+async function saveIncomeAndTax() {
+  await api.income.save({
+    financialYear: '2026-27',
+    grossAnnual: document.getElementById('i-gross-salary').value || '0',
+    netAnnual: document.getElementById('i-net-salary').value || '0',
+    rentalIncome: document.getElementById('i-rental-income').value || '0',
+    otherIncome: document.getElementById('i-other-income').value || '0',
+    regimeOpted: document.getElementById('i-regime').value
+  });
+
+  return api.taxInputs.save({
+    financialYear: '2026-27',
+    regimeOpted: document.getElementById('i-regime').value,
+    section80cDeductions: document.getElementById('t-deduction-80c').value || '0',
+    section80dDeductions: document.getElementById('t-deduction-80d').value || '0',
+    homeLoanInterestDeduction: document.getElementById('t-home-loan-interest').value || '0',
+    tdsPaid: document.getElementById('t-tds-paid').value || '0'
+  });
+}
+document.getElementById('income-form').addEventListener('input', () => scheduleAutosave(saveIncomeAndTax));
+
+async function loadExpenses() {
+  try {
+    const exp = await api.expenses.get();
+    if (exp) {
+      if (exp.monthly_essential_expenses || exp.monthlyEssentialExpenses) document.getElementById('exp-essential').value = exp.monthly_essential_expenses || exp.monthlyEssentialExpenses;
+      if (exp.monthly_lifestyle_expenses || exp.monthlyLifestyleExpenses) document.getElementById('exp-lifestyle').value = exp.monthly_lifestyle_expenses || exp.monthlyLifestyleExpenses;
+      if (exp.monthly_education_expenses || exp.monthlyEducationExpenses) document.getElementById('exp-education').value = exp.monthly_education_expenses || exp.monthlyEducationExpenses;
+      if (exp.monthly_medical_expenses || exp.monthlyMedicalExpenses) document.getElementById('exp-medical').value = exp.monthly_medical_expenses || exp.monthlyMedicalExpenses;
+      if (exp.monthly_debt_payments || exp.monthlyDebtPayments) document.getElementById('exp-debt').value = exp.monthly_debt_payments || exp.monthlyDebtPayments;
+      if (exp.monthly_other_expenses || exp.monthlyOtherExpenses) document.getElementById('exp-other').value = exp.monthly_other_expenses || exp.monthlyOtherExpenses;
+    }
+  } catch {}
+}
+
+async function saveExpenses() {
+  return api.expenses.save({
+    financialYear: '2026-27',
+    monthlyEssentialExpenses: document.getElementById('exp-essential').value || '0',
+    monthlyLifestyleExpenses: document.getElementById('exp-lifestyle').value || '0',
+    monthlyEducationExpenses: document.getElementById('exp-education').value || '0',
+    monthlyMedicalExpenses: document.getElementById('exp-medical').value || '0',
+    monthlyDebtPayments: document.getElementById('exp-debt').value || '0',
+    monthlyOtherExpenses: document.getElementById('exp-other').value || '0'
+  });
+}
+document.getElementById('expenses-form').addEventListener('input', () => scheduleAutosave(saveExpenses));
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderList(containerId, items, labelFn) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (items.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-desc">None added yet.</div></div>';
+    return;
+  }
+  container.innerHTML = items.map((item, i) => `
+    <div class="list-item-row">
+      <div>
+        <div class="list-item-label">${escHtml(labelFn(item).primary)}</div>
+        <div class="list-item-sub">${escHtml(labelFn(item).secondary)}</div>
+      </div>
+      <div class="flex gap-3 items-center">
+        <span class="list-item-value">${escHtml(labelFn(item).value)}</span>
+        <button class="btn btn-ghost btn-sm remove-btn" data-idx="${i}" aria-label="Remove">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadAssets() {
+  try { assets = (await api.assets.list()) || []; } catch { assets = []; }
+  renderAssets();
+}
+function renderAssets() {
+  renderList('assets-list', assets, a => ({
+    primary:   a.label || a.asset_type || a.assetType || '—',
+    secondary: a.asset_type || a.assetType || '',
+    value:     formatINR(a.current_value || a.currentValue || 0)
+  }));
+  document.querySelectorAll('#assets-list .remove-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = Number(btn.dataset.idx);
+      try { await api.assets.remove(assets[idx].id); assets.splice(idx, 1); renderAssets(); toast('Asset removed','info'); }
+      catch (e) { toast(e.message,'error'); }
+    });
+  });
+}
+document.getElementById('asset-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const displayClass = document.getElementById('a-class').value;
+  try {
+    const created = await api.assets.create({
+      label:              document.getElementById('a-label').value.trim() || undefined,
+      assetType:          assetClassToType(displayClass),
+      currentValue:       document.getElementById('a-current-value').value || '0',
+      annualContribution: document.getElementById('a-annual-contribution').value || '0',
+      metadata:           { displayClass },
+    });
+    assets.push(created);
+    renderAssets();
+    e.target.reset();
+    toast('Asset added', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+});
+
+async function loadInsurance() {
+  try { insurance = (await api.insurance.list()) || []; } catch { insurance = []; }
+  renderInsurance();
+}
+function renderInsurance() {
+  renderList('insurance-list', insurance, p => ({
+    primary:   p.policy_name || p.insurer || p.policy_type || p.policyType || '—',
+    secondary: (p.policy_type || p.policyType || '') + (p.is_pure_term ? ' · Pure Term' : ''),
+    value:     formatINR(p.sum_assured || p.sumAssured || 0)
+  }));
+  document.querySelectorAll('#insurance-list .remove-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = Number(btn.dataset.idx);
+      try { await api.insurance.remove(insurance[idx].id); insurance.splice(idx,1); renderInsurance(); toast('Policy removed','info'); }
+      catch (e) { toast(e.message,'error'); }
+    });
+  });
+}
+document.getElementById('insurance-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const displayType = document.getElementById('ins-type').value;
+  try {
+    const created = await api.insurance.create({
+      policyName:    document.getElementById('ins-name').value.trim() || undefined,
+      insurer:       document.getElementById('ins-label').value.trim() || undefined,
+      policyType:    insTypeToBackend(displayType),
+      sumAssured:    document.getElementById('ins-cover').value || '0',
+      annualPremium: document.getElementById('ins-premium').value || '0',
+      maturityYear:  Number(document.getElementById('ins-expiry').value) || undefined,
+      isPureTerm:    document.getElementById('ins-pure-term').checked,
+      isActive:      document.getElementById('ins-active').checked
+    });
+    insurance.push(created);
+    renderInsurance();
+    e.target.reset();
+    toast('Policy added', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+});
+
+async function loadLiabilities() {
+  try { liabilities = (await api.liabilities.list()) || []; } catch { liabilities = []; }
+  renderLiabilities();
+}
+function renderLiabilities() {
+  renderList('liabilities-list', liabilities, l => ({
+    primary:   (l.lender_name || '') + ' ' + (l.loan_type || l.loanType || '—'),
+    secondary: (l.loan_type || l.loanType || '') + ' · EMI ' + formatINR(l.emi || 0) + '/mo',
+    value:     formatINR(l.outstanding || l.outstandingBalance || 0)
+  }));
+  document.querySelectorAll('#liabilities-list .remove-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = Number(btn.dataset.idx);
+      try { await api.liabilities.remove(liabilities[idx].id); liabilities.splice(idx,1); renderLiabilities(); toast('Loan removed','info'); }
+      catch (e) { toast(e.message,'error'); }
+    });
+  });
+}
+document.getElementById('liability-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const created = await api.liabilities.create({
+      lenderName:         document.getElementById('l-lender').value.trim() || undefined,
+      loanType:           document.getElementById('l-type').value,
+      outstanding:        document.getElementById('l-outstanding').value || '0',
+      emi:                document.getElementById('l-emi').value || '0',
+      annualInterestRate: document.getElementById('l-rate').value || '0',
+      tenureMonthsLeft:   Number(document.getElementById('l-tenure').value) || 0
+    });
+    liabilities.push(created);
+    renderLiabilities();
+    e.target.reset();
+    toast('Loan added', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+});
+
+async function loadGoals() {
+  try { goals = (await api.goals.list()) || []; } catch { goals = []; }
+  renderGoals();
+}
+function renderGoals() {
+  renderList('goals-list', goals, g => ({
+    primary:   g.label || g.goal_type || g.goalType || '—',
+    secondary: (g.goal_type || g.goalType || '') + ' · Target ' + (g.target_year || g.targetYear) + ' · Priority ' + g.priority,
+    value:     formatINR(g.target_amount_today || g.targetAmountToday || 0)
+  }));
+  document.querySelectorAll('#goals-list .remove-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = Number(btn.dataset.idx);
+      try { await api.goals.remove(goals[idx].id); goals.splice(idx,1); renderGoals(); toast('Goal removed','info'); }
+      catch (e) { toast(e.message,'error'); }
+    });
+  });
+}
+document.getElementById('goal-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const currentYear = new Date().getFullYear();
+  let targetYear = Number(document.getElementById('g-target-year').value);
+  if (!targetYear) targetYear = currentYear + 10;
+  try {
+    const created = await api.goals.create({
+      goalType:          document.getElementById('g-type').value,
+      label:             document.getElementById('g-label').value.trim() || undefined,
+      targetAmountToday: document.getElementById('g-amount').value || '0',
+      targetYear,
+      priority:          Number(document.getElementById('g-priority').value) || 1
+    });
+    goals.push(created);
+    renderGoals();
+    e.target.reset();
+    toast('Goal added', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+});
+
+async function validateAndSaveCurrentStep() {
+  if (currentStep === 0) {
+    if (!validateProfile()) return false;
+  }
+
+  setAutosaveStatus('saving', 'Saving…');
+  try {
+    if (currentStep === 0 || currentStep === 1) await saveProfile();
+    else if (currentStep === 2) await saveIncomeAndTax();
+    else if (currentStep === 3) await saveExpenses();
+    setAutosaveStatus('saved', 'Saved ✓');
+    return true;
+  } catch (err) {
+    setAutosaveStatus('error', 'Save failed');
+    toast((err.message || 'Save failed') + '. Form values preserved.', 'error', 5000);
+    return true;
+  }
+}
+
+function populateReview() {
+  const profileName  = document.getElementById('p-name').value || '—';
+  const occupation   = document.getElementById('occ-type').value || '—';
+  const grossSalary  = document.getElementById('i-gross-salary').value || '0';
+  const regime       = document.getElementById('i-regime').value;
+  const totalAssets  = assets.reduce((s, a) => s + Number(a.current_value || a.currentValue || 0), 0);
+  const totalLiabs   = liabilities.reduce((s, l) => s + Number(l.outstanding || l.outstandingBalance || 0), 0);
+
+  document.getElementById('review-summary').innerHTML = `
+    <dt>Name</dt><dd>${escHtml(profileName)}</dd>
+    <dt>Occupation</dt><dd>${escHtml(occupation)}</dd>
+    <dt>Gross Salary (annual)</dt><dd>${formatINR(grossSalary)}</dd>
+    <dt>Tax Regime</dt><dd>${escHtml(regime)}</dd>
+    <dt>Assets</dt><dd>${assets.length} item(s) · ${formatINR(totalAssets)}</dd>
+    <dt>Insurance</dt><dd>${insurance.length} policy/policies</dd>
+    <dt>Liabilities</dt><dd>${liabilities.length} loan(s) · ${formatINR(totalLiabs)}</dd>
+    <dt>Goals</dt><dd>${goals.length} goal(s)</dd>
+    <dt>Net Worth (snapshot)</dt><dd>${formatINR(totalAssets - totalLiabs)}</dd>
+  `;
+
+  document.getElementById('assumptions-list').innerHTML =
+    '<p class="text-sm text-muted">Active FY 2026-27 engine assumptions and tax slabs will be applied at run time.</p>';
+
+  const warnings = [];
+  if (!document.getElementById('p-name').value)       warnings.push('Name is missing from your profile.');
+  if (!document.getElementById('p-dob').value)         warnings.push('Date of birth is missing.');
+  if (!document.getElementById('i-gross-salary').value) warnings.push('Gross salary is not entered.');
+  if (goals.length === 0) warnings.push('No goals added — analysis will have no goals to project.');
+  document.getElementById('review-warnings').innerHTML =
+    warnings.map(w => `<div class="warning-item"><span>⚠️</span> ${escHtml(w)}</div>`).join('');
+}
+
+document.getElementById('run-analysis-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('run-analysis-btn');
+  const status = document.getElementById('run-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Running analysis…';
+  status.innerHTML = '<div class="loading-overlay"><div class="spinner"></div><span class="text-muted">Projecting goals and running diagnostics…</span></div>';
+  try {
+    const result = await api.analysis.run({ financialYear: '2026-27' });
+    toast('Analysis complete! Redirecting to dashboard…', 'success');
+    setTimeout(() => {
+      window.location.href = '/dashboard.html?planId=' + (result.planRun?.id || '');
+    }, 1200);
+  } catch (err) {
+    status.innerHTML = '<div class="alert alert-error mt-4" role="alert">' + escHtml(err.message || 'Analysis failed.') + '</div>';
+    btn.disabled = false;
+    btn.textContent = '🚀 Run Analysis';
+    toast(err.message || 'Analysis failed.', 'error');
+  }
+});
+
+await Promise.all([
+  loadProfile(),
+  loadIncomeAndTax(),
+  loadExpenses(),
+  loadAssets(),
+  loadInsurance(),
+  loadLiabilities(),
+  loadGoals()
+]);
+
+// Support ?step=N deep-linking from sidebar navigation
+const _urlStep = parseInt(new URLSearchParams(location.search).get('step'), 10);
+showStep(!isNaN(_urlStep) && _urlStep >= 0 && _urlStep < TOTAL_STEPS ? _urlStep : 0);
+</script>
+</body>
+</html>

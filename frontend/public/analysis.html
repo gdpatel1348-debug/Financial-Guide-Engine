@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analysis — Financial Guidance Engine</title>
+  <meta name="description" content="Detailed analysis: goal projections, diagnostics, SIP requirements, and MF overlap for your financial plan." />
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <style>
+    .analysis-section { margin-bottom: var(--sp-8); }
+    .analysis-section-title {
+      font-size: 1.1rem; font-weight: 700;
+      margin-bottom: var(--sp-4);
+      display: flex; align-items: center; gap: var(--sp-2);
+    }
+    .completeness-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-3);
+    }
+    .completeness-item {
+      background: var(--color-surface-2); border: 1px solid var(--color-border);
+      border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .completeness-label { font-size: 0.85rem; font-weight: 500; color: var(--color-text-2); }
+    .completeness-badge { font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: var(--r-full); }
+    .completeness-badge.COMPLETE { background: rgba(16,185,129,0.15); color: #10b981; }
+    .completeness-badge.INCOMPLETE,
+    .completeness-badge.NOT_ENTERED { background: rgba(100,116,139,0.15); color: #94a3b8; }
+    
+    .snapshot-card {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--r-md); padding: var(--sp-5); margin-bottom: var(--sp-4);
+    }
+    .snapshot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); margin-bottom: var(--sp-4); }
+    .snapshot-item dt { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-3); }
+    .snapshot-item dd { font-size: 1.3rem; font-weight: 700; font-family: var(--font-mono); color: var(--color-text); margin-top: 4px; }
+    .snapshot-explanation { font-size: 0.82rem; color: var(--color-text-2); border-top: 1px solid var(--color-border); padding-top: var(--sp-3); }
+
+    .goal-detail-card {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--r-md); padding: var(--sp-5); margin-bottom: var(--sp-3);
+    }
+    .goal-detail-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--sp-4); }
+    .goal-detail-kv { display: grid; grid-template-columns: repeat(3,1fr); gap: var(--sp-4); }
+    .kv-item dt { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-3); }
+    .kv-item dd { font-size: 1rem; font-family: var(--font-mono); color: var(--color-text); margin-top: 2px; }
+
+    .next-action-item {
+      display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4);
+      background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--r-md);
+      margin-bottom: var(--sp-2); font-size: 0.88rem; color: var(--color-text-2);
+    }
+
+    .overlap-pair {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid var(--color-border);
+    }
+    .overlap-pair:last-child { border-bottom: none; }
+    .overlap-pct { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; }
+    .run-new-btn-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-6); }
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar" aria-label="Main navigation">
+  <a class="navbar-brand" href="/dashboard.html">
+    <div class="navbar-logo">FG</div>
+    Financial Guidance Engine
+  </a>
+  <div class="navbar-actions">
+    <span id="user-chip" class="text-sm text-muted"></span>
+    <button id="logout-btn" class="btn btn-ghost btn-sm">Sign out</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar" aria-label="Sidebar navigation"></aside>
+
+  <main class="main-content" aria-label="Analysis content">
+    <div id="loading-view" class="loading-overlay">
+      <div class="spinner"></div>
+      <span>Loading analysis…</span>
+    </div>
+    <div id="empty-view" class="empty-state hidden">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">No analysis found</div>
+      <div class="empty-desc">Complete the intake wizard and run an analysis first.</div>
+      <a href="/wizard.html" class="btn btn-primary mt-6">Go to Wizard</a>
+    </div>
+
+    <div id="analysis-view" class="hidden">
+      <div class="run-new-btn-bar">
+        <div>
+          <h1 style="font-size:1.4rem">Financial Analysis</h1>
+          <div id="plan-meta" class="text-sm text-muted mt-1"></div>
+        </div>
+        <div class="flex gap-3">
+          <button id="run-new-btn" class="btn btn-accent">🚀 Run New Analysis</button>
+          <a id="pdf-link" href="#" class="btn btn-outline" target="_blank">📄 PDF</a>
+        </div>
+      </div>
+      <div id="run-status" aria-live="polite"></div>
+
+      <!-- 1. Plan Information Status (Data Completeness) -->
+      <div class="analysis-section card">
+        <div class="analysis-section-title">📋 Plan information status</div>
+        <div id="completeness-summary" class="completeness-grid"></div>
+      </div>
+
+      <!-- 2. Financial Snapshot -->
+      <div class="analysis-section">
+        <div class="analysis-section-title">📊 Financial Snapshot</div>
+        <div class="snapshot-card mb-4">
+          <div class="snapshot-grid">
+            <div class="snapshot-item"><dt>Total Assets</dt><dd id="snap-assets">—</dd></div>
+            <div class="snapshot-item"><dt>Total Liabilities</dt><dd id="snap-liabilities">—</dd></div>
+            <div class="snapshot-item"><dt>Net Worth</dt><dd id="snap-networth" style="color:var(--color-accent)">—</dd></div>
+          </div>
+          <div id="snap-explanation" class="snapshot-explanation"></div>
+        </div>
+        <div class="grid-2">
+          <div id="chart-net-worth-analysis"></div>
+          <div id="chart-asset-allocation-analysis"></div>
+        </div>
+      </div>
+
+      <!-- 3. Goal Projections & Funding Chart -->
+      <div class="analysis-section" id="section-allocation">
+        <div id="chart-goal-funding-analysis" class="mb-4"></div>
+        <div class="analysis-section-title">🎯 Goal Projection Breakdown</div>
+        <div id="goal-cards"></div>
+      </div>
+
+      <!-- 4. Corpus Projection, Income Distribution & Tax Comparison -->
+      <div class="analysis-section">
+        <div id="chart-corpus-projection" class="mb-4"></div>
+        <div class="grid-2">
+          <div id="chart-income-distribution-analysis"></div>
+          <div id="chart-tax-comparison-analysis"></div>
+        </div>
+      </div>
+
+      <!-- 5. Emergency Reserve & Insurance Coverage -->
+      <div class="analysis-section grid-2">
+        <div id="chart-emergency-reserve"></div>
+        <div id="chart-insurance-coverage"></div>
+      </div>
+
+      <!-- 6. Diagnostics -->
+      <div class="analysis-section">
+        <div class="analysis-section-title">⚠️ Diagnostic Findings</div>
+        <div id="diag-list"></div>
+        <p class="text-xs text-dimmer mt-3">Diagnostics provide helpful reference observations based on entered inputs and assumptions. They are not regulated investment advice.</p>
+      </div>
+
+      <!-- 7. What To Do Next -->
+      <div class="analysis-section">
+        <div class="analysis-section-title">💡 What to do next</div>
+        <div id="next-actions-list"></div>
+      </div>
+
+      <!-- 8. MF Overlap -->
+      <div class="analysis-section">
+        <div id="chart-mf-overlap-analysis"></div>
+      </div>
+
+      <!-- 9. Assumptions -->
+      <div class="analysis-section card" id="assumptions-content">
+        <div class="analysis-section-title">⚙️ Assumptions Used</div>
+        <p class="text-sm text-muted mb-2">These are configurable planning assumptions used for this analysis. They are estimates, not guarantees.</p>
+        <p class="text-sm text-muted mb-4">These assumptions were active at the time this plan was run. The snapshot is immutable.</p>
+        <div id="assumptions-grid"></div>
+        <div id="assumptions-meta" class="mt-4" style="border-top:1px solid var(--color-border);padding-top:var(--sp-4);"></div>
+      </div>
+
+      <!-- 10. Disclaimer -->
+      <div class="analysis-section">
+        <div class="alert alert-info">
+          <div>
+            <strong>Indicative analysis only.</strong> Results are estimates under the selected assumptions and financial year configuration.
+            They are sensitive to changes in income, returns, inflation, lifespan, and withdrawal patterns.
+            This tool does not provide personalized investment advice. Review results with a qualified SEBI-registered investment adviser or tax professional.
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { api } from '/assets/js/api.js';
+import { requireAuth, renderUserChip, logout } from '/assets/js/auth.js';
+import { formatINR, formatDateTime, severityIcon, toast } from '/assets/js/format.js';
+import {
+  renderGoalFundingChart,
+  renderCorpusProjectionChart,
+  renderTaxComparisonChart,
+  renderEmergencyReserveChart,
+  renderInsuranceCoverageChart,
+  renderMfOverlapVisualization,
+  renderNetWorthCompositionChart,
+  renderAssetAllocationChart,
+  renderIncomeDistributionChart
+} from '/assets/js/components/charts.js';
+import { renderAppSidebar } from '/assets/js/components/sidebar.js';
+
+const user = await requireAuth();
+renderUserChip(user);
+document.getElementById('logout-btn').addEventListener('click', () => logout());
+renderAppSidebar({ activeKey: 'analysis' });
+
+const params = new URLSearchParams(location.search);
+let planId = params.get('planId');
+
+const loadingView  = document.getElementById('loading-view');
+const emptyView    = document.getElementById('empty-view');
+const analysisView = document.getElementById('analysis-view');
+
+function show(view) {
+  [loadingView, emptyView, analysisView].forEach(v => v.classList.add('hidden'));
+  view.classList.remove('hidden');
+}
+
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function load() {
+  show(loadingView);
+  try {
+    if (!planId) {
+      const history = await api.analysis.history();
+      if (!history || history.length === 0) { show(emptyView); return; }
+      planId = history[0].id;
+    }
+    const plan = await api.analysis.get(planId);
+    render(plan);
+  } catch (e) {
+    toast(e.message || 'Failed to load.', 'error');
+    show(emptyView);
+  }
+}
+
+function render(plan) {
+  const { planRun, dataCompletenessSummary, financialSnapshot, recommendedNextActions, summary, goals, diagnostics, assumptions, mfOverlap, charts: planCharts } = plan;
+  const charts = planCharts || plan.outputSnapshot?.charts || {};
+  show(analysisView);
+
+  const planMetaEl = document.getElementById('plan-meta');
+  if (planMetaEl) {
+    planMetaEl.textContent = `FY ${planRun.financialYear} · Engine v${planRun.engineVersion} · ${formatDateTime(planRun.runAt)}`;
+  }
+  const pdfLinkEl = document.getElementById('pdf-link');
+  if (pdfLinkEl) {
+    pdfLinkEl.href = api.report.pdfUrl(planRun.id);
+  }
+
+  // Render SVG Charts on Analysis page
+  renderNetWorthCompositionChart('chart-net-worth-analysis', charts.netWorthComposition);
+  renderAssetAllocationChart('chart-asset-allocation-analysis', charts.assetAllocation);
+  renderGoalFundingChart('chart-goal-funding-analysis', charts.goalFunding);
+  renderCorpusProjectionChart('chart-corpus-projection', charts.corpusProjection);
+  renderIncomeDistributionChart('chart-income-distribution-analysis', charts.incomeDistribution);
+  renderTaxComparisonChart('chart-tax-comparison-analysis', charts.taxComparison);
+  renderEmergencyReserveChart('chart-emergency-reserve', charts.emergencyReserve);
+  renderInsuranceCoverageChart('chart-insurance-coverage', charts.insuranceCoverage);
+  renderMfOverlapVisualization('chart-mf-overlap-analysis', charts.mfOverlap);
+
+  // 1. Plan Information Status (Data Completeness Summary)
+  const comp = dataCompletenessSummary || {};
+  const sections = [
+    { label: 'Profile', key: 'profile' },
+    { label: 'Income', key: 'income' },
+    { label: 'Assets', key: 'assets' },
+    { label: 'Liabilities', key: 'liabilities' },
+    { label: 'Insurance', key: 'insurance' },
+    { label: 'Goals', key: 'goals' },
+    { label: 'Mutual-fund holdings', key: 'mfHoldings' }
+  ];
+
+  const compEl = document.getElementById('completeness-summary');
+  if (compEl) {
+    compEl.innerHTML = sections.map(s => {
+      const val = comp[s.key] || 'NOT_ENTERED';
+      const displayVal = val === 'COMPLETE' ? 'Complete' : val === 'INCOMPLETE' ? 'Incomplete' : 'Not entered';
+      return `
+        <div class="completeness-item">
+          <span class="completeness-label">${escHtml(s.label)}</span>
+          <span class="completeness-badge ${escHtml(val)}">${escHtml(displayVal)}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 2. Financial Snapshot
+  const snap = financialSnapshot || {
+    netWorth: summary.netWorth,
+    totalAssets: summary.totalAssets,
+    totalLiabilities: summary.totalLiabilities,
+    calculationExplanation: `Total assets ${formatINR(summary.totalAssets)} minus total liabilities ${formatINR(summary.totalLiabilities)}.`
+  };
+  const snapAssets = document.getElementById('snap-assets');
+  if (snapAssets) snapAssets.textContent = formatINR(snap.totalAssets);
+  const snapLiab = document.getElementById('snap-liabilities');
+  if (snapLiab) snapLiab.textContent = formatINR(snap.totalLiabilities);
+  const snapNet = document.getElementById('snap-networth');
+  if (snapNet) snapNet.textContent = formatINR(snap.netWorth);
+  const snapExp = document.getElementById('snap-explanation');
+  if (snapExp) snapExp.textContent = `Calculated as: ${snap.calculationExplanation || `Total assets ${formatINR(snap.totalAssets)} minus total liabilities ${formatINR(snap.totalLiabilities)}.`}`;
+
+  // 3. Goals
+  const goalsEl = document.getElementById('goal-cards');
+  if (goalsEl) {
+    if (!goals || goals.length === 0 || summary.hasGoals === false) {
+      goalsEl.innerHTML = `
+        <div class="card" style="padding: var(--sp-6); text-align: center;">
+          <div style="font-size: 1.5rem; margin-bottom: 8px;">🎯</div>
+          <div style="font-weight: 600; font-size: 1.05rem; margin-bottom: 4px;">Goals not entered</div>
+          <div style="font-size: 0.88rem; color: var(--color-text-2); max-width: 480px; margin: 0 auto 16px;">
+            Add at least one financial goal to calculate future goal value, projected corpus, funding gap, and indicative SIP.
+          </div>
+          <a href="/wizard.html" class="btn btn-sm btn-outline">Add Goals in Wizard</a>
+        </div>
+      `;
+    } else {
+      goalsEl.innerHTML = goals.map(g => {
+        const gap = Number(g.shortfall || 0);
+        const funded = Number(g.projectedCorpus || 0);
+        const future = Number(g.futureGoalValue || 0);
+        const pct = future > 0 ? Math.min(100, funded / future * 100).toFixed(0) : 0;
+        return `
+          <div class="goal-detail-card">
+            <div class="goal-detail-header">
+              <div>
+                <div style="font-size:1rem;font-weight:600">${escHtml(g.label || g.goalType)}</div>
+                <div class="text-xs text-dimmer">${escHtml(g.goalType)} · Target year ${escHtml(String(g.targetYear))} · Priority ${escHtml(String(g.priority))}</div>
+              </div>
+              <div>${gap <= 0 ? '<span class="label-tag green">Fully Funded</span>' : gap < future * 0.3 ? '<span class="label-tag yellow">Partially Funded</span>' : '<span class="label-tag red">Shortfall</span>'}</div>
+            </div>
+            <div class="goal-detail-kv">
+              <div class="kv-item"><dt>Today's Value</dt><dd>${formatINR(g.amountInTodaysRupees || g.amountToday)}</dd></div>
+              <div class="kv-item"><dt>Future Value (inflated)</dt><dd>${formatINR(g.futureGoalValue)}</dd></div>
+              <div class="kv-item"><dt>Projected Corpus</dt><dd>${formatINR(g.projectedCorpus || g.futureAllocatedCorpus)}</dd></div>
+              <div class="kv-item"><dt>Shortfall</dt><dd style="color:${gap>0?'var(--color-danger)':'var(--color-accent)'}">${gap > 0 ? formatINR(gap) : 'Surplus ' + formatINR(-gap)}</dd></div>
+              <div class="kv-item"><dt>Indicative Monthly SIP</dt><dd>${gap > 0 ? formatINR(g.monthlySip || g.recommendedSip) + '/mo' : '—'}</dd></div>
+              <div class="kv-item"><dt>Funded</dt><dd>${pct}%</dd></div>
+            </div>
+            <div class="alloc-bar mt-4">
+              <div class="alloc-bar-fill" style="width:${pct}%;background:${gap<=0?'var(--color-accent)':pct>50?'var(--color-warn)':'var(--color-danger)'}"></div>
+            </div>
+            <div class="text-xs text-dimmer mt-2">Future value applies ${escHtml(g.inflationAssumptionKey || 'configured')} inflation assumption. Indicative only — not a guarantee.</div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // 4. Diagnostics
+  const diagEl = document.getElementById('diag-list');
+  if (diagEl) {
+    const diags = (diagnostics || []);
+    if (diags.length === 0) {
+      diagEl.innerHTML = '<div class="alert alert-success">No diagnostic observations found.</div>';
+    } else {
+      diagEl.innerHTML = '<div style="display:flex;flex-direction:column;gap:var(--sp-3)">' + diags.map(d => {
+        const sev = d.severity || 'INFO';
+        const displaySev = sev.replace('_', ' ');
+        const evidenceHtml = d.evidence && Object.keys(d.evidence).length > 0
+          ? `<div class="text-xs text-dimmer mt-2" style="background:rgba(0,0,0,0.15);padding:6px 10px;border-radius:4px"><strong>Reference metrics:</strong> ${escHtml(Object.entries(d.evidence).map(([k,v]) => `${k}: ${v}`).join(' · '))}</div>`
+          : '';
+
+        return `
+          <div class="diagnostic-card ${escHtml(sev)}">
+            <div class="diag-severity">
+              <div class="diag-severity-icon">${severityIcon(sev)}</div>
+              <div class="diag-severity-label">${escHtml(displaySev)}</div>
+            </div>
+            <div class="diag-body">
+              <div class="diag-title">${escHtml(d.title)}</div>
+              <div class="diag-explanation">${escHtml(d.message || d.explanation)}</div>
+              ${evidenceHtml}
+              ${d.nextAction ? `<div class="diag-next-step mt-2">💡 Next step: ${escHtml(d.nextAction.replace(/_/g, ' '))}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('') + '</div>';
+    }
+  }
+
+  // 5. What To Do Next
+  const nextActionsEl = document.getElementById('next-actions-list');
+  if (nextActionsEl) {
+    const actions = recommendedNextActions || [];
+    if (actions.length === 0) {
+      nextActionsEl.innerHTML = '<div class="alert alert-success">All recommended sections are complete.</div>';
+    } else {
+      nextActionsEl.innerHTML = actions.map(a => `
+        <div class="next-action-item">
+          <span>➡️</span>
+          <span>${escHtml(a.action || a.title || a)}</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 6. MF Overlap
+  const overlapEl = document.getElementById('overlap-content');
+  if (overlapEl) {
+    const overlap = mfOverlap || plan.overlap;
+    if (!overlap || !overlap.pairs || overlap.pairs.length === 0) {
+      overlapEl.innerHTML = '<p class="text-sm text-muted">No mutual-fund holdings have been entered, so overlap analysis is not available yet.</p>';
+    } else {
+      const pairsHtml = overlap.pairs.map(p => {
+        const pct = parseFloat(p.overlapPct) * 100;
+        const badge = pct >= 50 ? 'red' : pct >= 30 ? 'yellow' : 'green';
+        return `
+          <div class="overlap-pair">
+            <div>
+              <div class="text-sm font-medium">${escHtml(p.schemeA)} vs ${escHtml(p.schemeB)}</div>
+              <div class="text-xs text-dimmer">${p.commonIsins || 0} common securities</div>
+            </div>
+            <div>
+              <div class="overlap-pct" style="color:${badge==='red'?'var(--color-danger)':badge==='yellow'?'var(--color-warn)':'var(--color-accent)'}">${pct.toFixed(1)}%</div>
+              <div class="text-xs text-dimmer text-right">${badge === 'red' ? 'High redundancy' : badge === 'yellow' ? 'Watch' : 'Healthy'}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      overlapEl.innerHTML = `<p class="text-xs text-dimmer mb-4">Holdings data as of: ${escHtml(overlap.asOfDate || 'n/a')} · Overlap matched by ISIN.</p>${pairsHtml}`;
+    }
+  }
+
+  // 7. Assumptions — human-readable formatted display
+  const assumpGridEl = document.getElementById('assumptions-grid');
+  const assumpMetaEl = document.getElementById('assumptions-meta');
+  if (assumpGridEl) {
+    const assumps = assumptions || plan.assumptionsUsed || {};
+
+    // Human-readable label/unit mapping keyed by assumption_key
+    const ASSUMPTION_META = {
+      inflation_general:            { label: 'General inflation',                    unit: 'per year',                    format: 'pct',     group: 'Inflation' },
+      inflation_education:          { label: 'Education inflation',                  unit: 'per year',                    format: 'pct',     group: 'Inflation' },
+      inflation_medical:            { label: 'Medical inflation',                    unit: 'per year',                    format: 'pct',     group: 'Inflation' },
+      inflation_lifestyle:          { label: 'Lifestyle inflation',                  unit: 'per year',                    format: 'pct',     group: 'Inflation' },
+      return_equity:                { label: 'Equity expected return',               unit: 'per year',                    format: 'pct',     group: 'Return Expectations' },
+      return_debt:                  { label: 'Debt expected return',                 unit: 'per year',                    format: 'pct',     group: 'Return Expectations' },
+      return_gold:                  { label: 'Gold expected return',                 unit: 'per year',                    format: 'pct',     group: 'Return Expectations' },
+      return_real_estate:           { label: 'Real estate expected return',          unit: 'per year',                    format: 'pct',     group: 'Return Expectations' },
+      return_epf:                   { label: 'EPF expected return',                  unit: 'per year',                    format: 'pct',     group: 'Return Expectations' },
+      return_fd:                    { label: 'Fixed deposit expected return',        unit: 'per year',                    format: 'pct',     group: 'Return Expectations' },
+      return_cash:                  { label: 'Savings / cash expected return',       unit: 'per year',                    format: 'pct',     group: 'Return Expectations' },
+      return_other:                 { label: 'Other assets expected return',         unit: 'per year',                    format: 'pct',     group: 'Return Expectations' },
+      emergency_fund_months:        { label: 'Emergency fund reference',             unit: 'months of essential expenses', format: 'number',  group: 'Diagnostic Benchmarks' },
+      term_cover_income_multiple:   { label: 'Term-cover reference',                 unit: 'x annual income',             format: 'number',  group: 'Diagnostic Benchmarks' },
+      debt_to_income_ratio_warning: { label: 'Debt-to-income warning level',         unit: '',                            format: 'pct',     group: 'Diagnostic Benchmarks' },
+      default_life_expectancy:      { label: 'Default life expectancy',              unit: 'years',                       format: 'number',  group: 'Diagnostic Benchmarks' },
+      post_retirement_return:       { label: 'Post-retirement expected return',       unit: 'per year',                    format: 'pct',     group: 'Diagnostic Benchmarks' },
+    };
+
+    function formatAssumptionValue(raw, format) {
+      const num = parseFloat(raw);
+      if (isNaN(num)) return escHtml(String(raw));
+      if (format === 'pct') return (num * 100).toFixed(1).replace(/\.0$/, '') + '%';
+      if (format === 'number') return Number.isInteger(num) ? String(num) : num.toFixed(1).replace(/\.0$/, '');
+      return String(raw);
+    }
+
+    // Group assumptions
+    const groups = {};
+    for (const [key, rawValue] of Object.entries(assumps)) {
+      const meta = ASSUMPTION_META[key];
+      const groupName = meta?.group || 'Other';
+      if (!groups[groupName]) groups[groupName] = [];
+      groups[groupName].push({ key, rawValue, meta });
+    }
+
+    const GROUP_ORDER = ['Inflation', 'Return Expectations', 'Diagnostic Benchmarks', 'Other'];
+    const orderedGroups = GROUP_ORDER.filter(g => groups[g]);
+
+    assumpGridEl.innerHTML = orderedGroups.map(groupName => {
+      const items = groups[groupName];
+      const rowsHtml = items.map(({ key, rawValue, meta }) => {
+        const label = meta?.label || key.replace(/_/g, ' ');
+        const formatted = formatAssumptionValue(rawValue, meta?.format || 'number');
+        const unit = meta?.unit || '';
+        return `
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--color-border);">
+            <span style="font-size:0.88rem;color:var(--color-text-2)">${escHtml(label)}</span>
+            <span style="font-family:var(--font-mono);font-size:0.95rem;font-weight:600;color:var(--color-text)">
+              ${escHtml(formatted)}
+              ${unit ? `<span style="font-size:0.75rem;font-weight:400;color:var(--color-text-3);margin-left:4px">${escHtml(unit)}</span>` : ''}
+            </span>
+          </div>
+        `;
+      }).join('');
+      return `
+        <div style="margin-bottom:var(--sp-5)">
+          <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--color-text-3);margin-bottom:var(--sp-2)">${escHtml(groupName)}</div>
+          ${rowsHtml}
+        </div>
+      `;
+    }).join('');
+
+    if (Object.keys(assumps).length === 0) {
+      assumpGridEl.innerHTML = '<p class="text-sm text-muted">Assumption details not available for this snapshot.</p>';
+    }
+  }
+
+  // Assumptions metadata (source note, version, FY, engine version, snapshot date)
+  if (assumpMetaEl) {
+    const metaItems = [
+      planRun.financialYear ? `<span><strong>Financial year:</strong> FY ${escHtml(planRun.financialYear)}</span>` : '',
+      planRun.engineVersion ? `<span><strong>Engine version:</strong> v${escHtml(planRun.engineVersion)}</span>` : '',
+      planRun.runAt        ? `<span><strong>Snapshot date:</strong> ${escHtml(formatDateTime(planRun.runAt))}</span>` : '',
+    ].filter(Boolean);
+    assumpMetaEl.innerHTML = `
+      <p class="text-xs text-dimmer" style="display:flex;flex-wrap:wrap;gap:16px">
+        ${metaItems.join('')}
+      </p>
+      <p class="text-xs text-dimmer mt-2">Source: Indicative planning guidelines based on historical Indian macroeconomic trends and SEBI/AMFI literature. Development/Draft status — review with a qualified financial adviser before production use.</p>
+    `;
+  }
+}
+
+// Run new analysis
+document.getElementById('run-new-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('run-new-btn');
+  const statusEl = document.getElementById('run-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+  statusEl.innerHTML = '<div class="loading-overlay"><div class="spinner"></div><span class="text-muted">Running analysis…</span></div>';
+  try {
+    const result = await api.analysis.run({ financialYear: '2026-27' });
+    planId = result.planRun?.id;
+    toast('New analysis complete!', 'success');
+    statusEl.innerHTML = '';
+    const plan = await api.analysis.get(planId);
+    render(plan);
+    history.replaceState({}, '', `?planId=${planId}`);
+  } catch (e) {
+    statusEl.innerHTML = `<div class="alert alert-error mt-4">${escHtml(e.message || 'Analysis failed.')}</div>`;
+    toast(e.message || 'Failed.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Run New Analysis';
+  }
+});
+
+await load();
+</script>
+</body>
+</html>

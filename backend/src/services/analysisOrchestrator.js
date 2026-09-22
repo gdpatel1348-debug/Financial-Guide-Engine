@@ -66,7 +66,8 @@ export class AnalysisOrchestrator {
         employerOrBusinessName: profile.employer_or_business_name || '',
         jobTitleOrBusinessType: profile.job_title_or_business_type || '',
         employmentStartYear: profile.employment_start_year || null,
-        dependents: profile.dependents || 0,
+        dependents: (profile.number_of_dependents !== undefined && profile.number_of_dependents !== null) ? profile.number_of_dependents : (profile.dependents || 0),
+        numberOfDependents: (profile.number_of_dependents !== undefined && profile.number_of_dependents !== null) ? profile.number_of_dependents : (profile.dependents || 0),
         retirementAge: profile.retirement_age || 60,
         riskProfile: profile.risk_profile || 'MODERATE',
         monthlyExpense: profile.monthly_expense || '0.00',
@@ -74,8 +75,10 @@ export class AnalysisOrchestrator {
       },
       income: {
         financialYear: fy,
-        grossAnnual: income.gross_annual || '0.00',
-        netAnnual: income.net_annual || null,
+        grossAnnual: income.gross_annual_income || income.gross_annual || '0.00',
+        grossAnnualIncome: income.gross_annual_income || income.gross_annual || '0.00',
+        netAnnual: income.net_annual_income || income.net_annual || null,
+        netAnnualIncome: income.net_annual_income || income.net_annual || null,
         monthlyGrossIncome: income.monthly_gross_income || null,
         monthlyNetIncome: income.monthly_net_income || null,
         otherIncome: income.other_income || '0.00',
@@ -107,6 +110,7 @@ export class AnalysisOrchestrator {
         monthlyEducationExpenses: expenses.monthly_education_expenses || '0.00',
         monthlyMedicalExpenses: expenses.monthly_medical_expenses || '0.00',
         monthlyDebtPayments: expenses.monthly_debt_payments || '0.00',
+        monthlyInsurancePremiums: expenses.monthly_insurance_premiums || '0.00',
         monthlyOtherExpenses: expenses.monthly_other_expenses || '0.00'
       },
       assets: assets.map(a => ({

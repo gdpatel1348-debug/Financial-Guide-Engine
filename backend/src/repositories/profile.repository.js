@@ -24,12 +24,15 @@ export class ProfileRepository {
     const employmentStartYear = data.employmentStartYear !== undefined ? data.employmentStartYear : (data.employment_start_year || null);
     const monthlyLifestyleExpenses = data.monthlyLifestyleExpenses ? String(data.monthlyLifestyleExpenses) : (data.monthly_lifestyle_expenses ? String(data.monthly_lifestyle_expenses) : null);
 
+    const dependents = data.numberOfDependents !== undefined ? Number(data.numberOfDependents) : (data.number_of_dependents !== undefined ? Number(data.number_of_dependents) : (data.dependents !== undefined ? Number(data.dependents) : 0));
+
     if (existing) {
       db.prepare(`
         UPDATE profiles SET
           full_name = ?,
           date_of_birth = ?,
           dependents = ?,
+          number_of_dependents = ?,
           retirement_age = ?,
           risk_profile = ?,
           city_tier = ?,
@@ -50,7 +53,8 @@ export class ProfileRepository {
       `).run(
         data.fullName || data.full_name,
         data.dateOfBirth || data.date_of_birth,
-        data.dependents !== undefined ? data.dependents : 0,
+        dependents,
+        dependents,
         data.retirementAge || data.retirement_age || 60,
         data.riskProfile || data.risk_profile || 'MODERATE',
         data.cityTier || data.city_tier || 'TIER_1',
@@ -72,17 +76,18 @@ export class ProfileRepository {
     } else {
       db.prepare(`
         INSERT INTO profiles (
-          user_id, full_name, date_of_birth, dependents, retirement_age,
+          user_id, full_name, date_of_birth, dependents, number_of_dependents, retirement_age,
           risk_profile, city_tier, monthly_expense, display_name, gender,
           marital_status, phone_number, city, state, occupation_type,
           employer_or_business_name, job_title_or_business_type, employment_start_year,
           monthly_lifestyle_expenses, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         userId,
         data.fullName || data.full_name,
         data.dateOfBirth || data.date_of_birth,
-        data.dependents !== undefined ? data.dependents : 0,
+        dependents,
+        dependents,
         data.retirementAge || data.retirement_age || 60,
         data.riskProfile || data.risk_profile || 'MODERATE',
         data.cityTier || data.city_tier || 'TIER_1',

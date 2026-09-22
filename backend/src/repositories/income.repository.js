@@ -14,8 +14,8 @@ export class IncomeRepository {
 
     const existing = db.prepare('SELECT id FROM incomes WHERE user_id = ? AND financial_year = ?').get(userId, fy);
 
-    const grossAnnual = String(data.grossAnnual || data.gross_annual || '0.00');
-    const netAnnual = data.netAnnual ? String(data.netAnnual) : (data.net_annual ? String(data.net_annual) : null);
+    const grossAnnual = String(data.grossAnnual || data.gross_annual || data.grossAnnualIncome || data.gross_annual_income || '0.00');
+    const netAnnual = data.netAnnual ? String(data.netAnnual) : (data.net_annual ? String(data.net_annual) : (data.netAnnualIncome ? String(data.netAnnualIncome) : (data.net_annual_income ? String(data.net_annual_income) : null)));
     const monthlyGross = data.monthlyGrossIncome ? String(data.monthlyGrossIncome) : (data.monthly_gross_income ? String(data.monthly_gross_income) : null);
     const monthlyNet = data.monthlyNetIncome ? String(data.monthlyNetIncome) : (data.monthly_net_income ? String(data.monthly_net_income) : null);
     const otherIncome = String(data.otherIncome || data.other_income || '0.00');
@@ -32,6 +32,8 @@ export class IncomeRepository {
         UPDATE incomes SET
           gross_annual = ?,
           net_annual = ?,
+          gross_annual_income = ?,
+          net_annual_income = ?,
           monthly_gross_income = ?,
           monthly_net_income = ?,
           other_income = ?,
@@ -45,6 +47,8 @@ export class IncomeRepository {
           updated_at = ?
         WHERE id = ?
       `).run(
+        grossAnnual,
+        netAnnual,
         grossAnnual,
         netAnnual,
         monthlyGross,
@@ -65,14 +69,17 @@ export class IncomeRepository {
       db.prepare(`
         INSERT INTO incomes (
           id, user_id, financial_year, gross_annual, net_annual,
+          gross_annual_income, net_annual_income,
           monthly_gross_income, monthly_net_income, other_income, rental_income,
           business_income, interest_income, dividend_income, capital_gains,
           eligible_deductions, regime_opted, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         id,
         userId,
         fy,
+        grossAnnual,
+        netAnnual,
         grossAnnual,
         netAnnual,
         monthlyGross,

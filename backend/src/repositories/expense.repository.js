@@ -19,6 +19,7 @@ export class ExpenseRepository {
     const education = String(data.monthlyEducationExpenses || data.monthly_education_expenses || '0.00');
     const medical = String(data.monthlyMedicalExpenses || data.monthly_medical_expenses || '0.00');
     const debt = String(data.monthlyDebtPayments || data.monthly_debt_payments || '0.00');
+    const insurance = String(data.monthlyInsurancePremiums || data.monthly_insurance_premiums || '0.00');
     const other = String(data.monthlyOtherExpenses || data.monthly_other_expenses || '0.00');
 
     if (existing) {
@@ -29,6 +30,7 @@ export class ExpenseRepository {
           monthly_education_expenses = ?,
           monthly_medical_expenses = ?,
           monthly_debt_payments = ?,
+          monthly_insurance_premiums = ?,
           monthly_other_expenses = ?,
           updated_at = ?
         WHERE id = ?
@@ -38,6 +40,7 @@ export class ExpenseRepository {
         education,
         medical,
         debt,
+        insurance,
         other,
         now,
         existing.id
@@ -48,9 +51,9 @@ export class ExpenseRepository {
         INSERT INTO expenses (
           id, user_id, financial_year, monthly_essential_expenses,
           monthly_lifestyle_expenses, monthly_education_expenses,
-          monthly_medical_expenses, monthly_debt_payments, monthly_other_expenses,
+          monthly_medical_expenses, monthly_debt_payments, monthly_insurance_premiums, monthly_other_expenses,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         id,
         userId,
@@ -60,6 +63,7 @@ export class ExpenseRepository {
         education,
         medical,
         debt,
+        insurance,
         other,
         now,
         now

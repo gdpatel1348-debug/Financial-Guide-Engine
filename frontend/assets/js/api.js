@@ -21,8 +21,12 @@ async function request(method, path, body) {
     headers: {}
   };
   if (body !== undefined) {
-    opts.headers['Content-Type'] = 'application/json';
-    opts.body = JSON.stringify(body);
+    if (typeof FormData !== 'undefined' && body instanceof FormData) {
+      opts.body = body;
+    } else {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
   }
   let res;
   try {
@@ -141,6 +145,20 @@ export const api = {
   // ── Report ─────────────────────────────────────────────────────────────
   report: {
     pdfUrl: (planRunId) => `/api/report/${planRunId}/pdf`,
+  },
+
+  // ── Documents ───────────────────────────────────────────────────────────
+  documents: {
+    uploadForm16: (fileOrFormData) => {
+      let formData;
+      if (typeof FormData !== 'undefined' && fileOrFormData instanceof FormData) {
+        formData = fileOrFormData;
+      } else {
+        formData = new FormData();
+        formData.append('file', fileOrFormData);
+      }
+      return post('/documents/form16', formData);
+    }
   },
 
   health: () => get('/health'),

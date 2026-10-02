@@ -231,6 +231,14 @@ h4 { font-size: 1.05rem; }
   color: var(--color-danger);
   margin-top: 2px;
 }
+.amount-in-words {
+  font-size: 0.72rem;
+  color: var(--color-text-3);
+  margin-top: 3px;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  display: none;
+}
 
 .input, .select {
   background: var(--color-bg-alt);

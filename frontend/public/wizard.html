@@ -133,6 +133,148 @@
     }
     .step-label { font-size: 0.7rem; font-weight: 500; color: var(--color-text-3); }
     .step-item.active .step-label { color: var(--color-primary); font-weight: 600; }
+
+    /* Form 16 Upload and Autofill styling */
+    .form16-dropzone-container {
+      margin-bottom: var(--sp-6);
+    }
+    .form16-dropzone {
+      border: 1.5px dashed var(--color-border-2);
+      border-radius: var(--r-md);
+      padding: var(--sp-4) var(--sp-5);
+      background: rgba(255, 255, 255, 0.015);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-4);
+      transition: all var(--t-fast);
+      cursor: pointer;
+    }
+    .form16-dropzone:hover, .form16-dropzone.dragover {
+      border-color: var(--color-accent);
+      background: rgba(54, 200, 160, 0.04);
+    }
+    .form16-dropzone.is-uploading {
+      pointer-events: none;
+      opacity: 0.7;
+      border-color: var(--color-primary);
+    }
+    .form16-dropzone-left {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+    }
+    .form16-dropzone-icon {
+      font-size: 1.75rem;
+      line-height: 1;
+    }
+    .form16-dropzone-titles {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .form16-dropzone-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+    .form16-dropzone-sub {
+      font-size: 0.78rem;
+      color: var(--color-text-2);
+    }
+    .form16-accuracy-note {
+      font-size: 0.72rem;
+      color: var(--color-text-3);
+      margin-top: 3px;
+    }
+    .form16-status-banner {
+      border-radius: var(--r-md);
+      padding: var(--sp-3) var(--sp-4);
+      margin-top: var(--sp-3);
+      font-size: 0.82rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .form16-status-banner.success {
+      background: rgba(54, 200, 160, 0.1);
+      border: 1px solid rgba(54, 200, 160, 0.3);
+      color: var(--color-accent);
+    }
+    .form16-status-banner.warning {
+      background: rgba(245, 166, 35, 0.1);
+      border: 1px solid rgba(245, 166, 35, 0.3);
+      color: var(--color-warn);
+    }
+    .form16-status-banner.error {
+      background: rgba(224, 82, 82, 0.1);
+      border: 1px solid rgba(224, 82, 82, 0.3);
+      color: var(--color-danger);
+    }
+    .form16-status-banner.info {
+      background: rgba(79, 142, 247, 0.1);
+      border: 1px solid rgba(79, 142, 247, 0.3);
+      color: var(--color-primary);
+    }
+    .form16-warnings-list {
+      margin: 4px 0 0 0;
+      padding-left: 18px;
+      font-size: 0.75rem;
+      color: var(--color-text-2);
+    }
+
+    /* Input highlighting */
+    .form-group.is-autofilled .input,
+    .form-group.is-autofilled .select,
+    .form-group.is-autofilled .input-prefix-wrap {
+      border-left: 3px solid var(--color-accent) !important;
+    }
+    .form-group.is-autofilled-low .input,
+    .form-group.is-autofilled-low .select,
+    .form-group.is-autofilled-low .input-prefix-wrap {
+      border-left: 3px solid var(--color-warn) !important;
+    }
+    .form-group.is-autofilled-edited .input,
+    .form-group.is-autofilled-edited .select,
+    .form-group.is-autofilled-edited .input-prefix-wrap {
+      border-left: 3px solid var(--color-primary) !important;
+    }
+
+    .form16-tag {
+      font-size: 0.65rem;
+      padding: 1px 6px;
+      border-radius: var(--r-sm);
+      margin-left: 6px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      vertical-align: middle;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .form16-candidate-chips {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+      align-items: center;
+      font-size: 0.72rem;
+      color: var(--color-text-3);
+    }
+    .form16-chip {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--color-border);
+      border-radius: var(--r-sm);
+      padding: 2px 7px;
+      cursor: pointer;
+      color: var(--color-text-2);
+      transition: all var(--t-fast);
+    }
+    .form16-chip:hover {
+      border-color: var(--color-primary);
+      color: var(--color-text);
+      background: rgba(79, 142, 247, 0.15);
+    }
   </style>
 </head>
 <body>
@@ -295,55 +437,84 @@
     <h2 class="step-heading" id="step2-heading">Income &amp; Tax Inputs</h2>
     <p class="step-desc">Income details and tax deductions for FY 2026-27. Tax is calculated dynamically by the engine.</p>
     <div class="form-card">
+      <!-- Form 16 Upload Dropzone -->
+      <div class="form16-dropzone-container" id="form16-container">
+        <input type="file" id="form16-file-input" accept=".pdf,.png,.jpg,.jpeg,.webp" class="sr-only" />
+        <div class="form16-dropzone" id="form16-dropzone" role="button" tabindex="0" aria-label="Upload Form 16 document">
+          <div class="form16-dropzone-left">
+            <div class="form16-dropzone-icon" id="form16-icon">📄</div>
+            <div class="form16-dropzone-titles">
+              <div class="form16-dropzone-title" id="form16-title">Upload Form 16</div>
+              <div class="form16-dropzone-sub">Optional — upload your Form 16 and we'll fill in what we can. You can edit everything after.</div>
+              <div class="form16-accuracy-note">
+                <span>ℹ️</span> TRACES PDF downloads extract reliably. Printed photos/scans use OCR with lower confidence.
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm shrink-0" id="form16-browse-btn">
+            Choose File
+          </button>
+        </div>
+        <div id="form16-status" class="hidden"></div>
+      </div>
+
       <form id="income-form" novalidate>
         <div class="grid-2">
-          <div class="form-group">
-            <label class="form-label" for="i-financial-year">Financial year</label>
+          <div class="form-group" id="grp-financial-year">
+            <label class="form-label" for="i-financial-year">Financial year <span id="tag-financial-year"></span></label>
             <input id="i-financial-year" class="input" type="text" value="2026-27" readonly />
           </div>
-          <div class="form-group">
-            <label class="form-label" for="i-regime">Tax regime opted</label>
+          <div class="form-group" id="grp-regime">
+            <label class="form-label" for="i-regime">Tax regime opted <span id="tag-regime"></span></label>
             <select id="i-regime" class="select">
               <option value="NEW" selected>New Tax Regime (default)</option>
               <option value="OLD">Old Tax Regime</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="i-gross-salary">Gross annual salary / business income (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="i-gross-salary" class="input" type="number" min="0" placeholder="1800000" /></div>
+          <div class="form-group" id="grp-gross-salary">
+            <label class="form-label" for="i-gross-salary">Gross annual salary / business income (₹) <span id="tag-gross-salary"></span></label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="i-gross-salary" class="input" type="number" min="0" placeholder="1800000" data-amount-words="true" /></div>
+            <div id="cand-gross-salary" class="form16-candidate-chips hidden"></div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="i-net-salary">Net annual in-hand income (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="i-net-salary" class="input" type="number" min="0" placeholder="1400000" /></div>
+          <div class="form-group" id="grp-net-salary">
+            <label class="form-label" for="i-net-salary">Net annual in-hand income (₹) <span id="tag-net-salary"></span></label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="i-net-salary" class="input" type="number" min="0" placeholder="1400000" data-amount-words="true" /></div>
+            <div id="cand-net-salary" class="form16-candidate-chips hidden"></div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="i-rental-income">Rental income (annual, ₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="i-rental-income" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+          <div class="form-group" id="grp-rental-income">
+            <label class="form-label" for="i-rental-income">Rental income (annual, ₹) <span id="tag-rental-income"></span></label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="i-rental-income" class="input" type="number" min="0" placeholder="0" value="0" data-amount-words="true" /></div>
+            <div id="cand-rental-income" class="form16-candidate-chips hidden"></div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="i-other-income">Other income (interest, dividend, etc. ₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="i-other-income" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+          <div class="form-group" id="grp-other-income">
+            <label class="form-label" for="i-other-income">Other income (interest, dividend, etc. ₹) <span id="tag-other-income"></span></label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="i-other-income" class="input" type="number" min="0" placeholder="0" value="0" data-amount-words="true" /></div>
+            <div id="cand-other-income" class="form16-candidate-chips hidden"></div>
           </div>
         </div>
         <hr class="divider" />
         <div class="form-card-title">User Tax Inputs &amp; Deductions</div>
         <div class="grid-2">
-          <div class="form-group">
-            <label class="form-label" for="t-deduction-80c">Section 80C deductions (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="t-deduction-80c" class="input" type="number" min="0" max="150000" placeholder="0" value="0" /></div>
+          <div class="form-group" id="grp-deduction-80c">
+            <label class="form-label" for="t-deduction-80c">Section 80C deductions (₹) <span id="tag-deduction-80c"></span></label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="t-deduction-80c" class="input" type="number" min="0" max="150000" placeholder="0" value="0" data-amount-words="true" /></div>
             <span class="form-hint">Max ₹1.5L (EPF, PPF, ELSS)</span>
+            <div id="cand-deduction-80c" class="form16-candidate-chips hidden"></div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="t-deduction-80d">Section 80D health insurance (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="t-deduction-80d" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+          <div class="form-group" id="grp-deduction-80d">
+            <label class="form-label" for="t-deduction-80d">Section 80D health insurance (₹) <span id="tag-deduction-80d"></span></label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="t-deduction-80d" class="input" type="number" min="0" placeholder="0" value="0" data-amount-words="true" /></div>
+            <div id="cand-deduction-80d" class="form16-candidate-chips hidden"></div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="t-home-loan-interest">Home loan interest deduction (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="t-home-loan-interest" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+          <div class="form-group" id="grp-home-loan-interest">
+            <label class="form-label" for="t-home-loan-interest">Home loan interest deduction (₹) <span id="tag-home-loan-interest"></span></label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="t-home-loan-interest" class="input" type="number" min="0" placeholder="0" value="0" data-amount-words="true" /></div>
+            <div id="cand-home-loan-interest" class="form16-candidate-chips hidden"></div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="t-tds-paid">TDS / Advance tax paid (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="t-tds-paid" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+          <div class="form-group" id="grp-tds-paid">
+            <label class="form-label" for="t-tds-paid">TDS / Advance tax paid (₹) <span id="tag-tds-paid"></span></label>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="t-tds-paid" class="input" type="number" min="0" placeholder="0" value="0" data-amount-words="true" /></div>
+            <div id="cand-tds-paid" class="form16-candidate-chips hidden"></div>
           </div>
         </div>
       </form>
@@ -359,28 +530,28 @@
         <div class="grid-2">
           <div class="form-group">
             <label class="form-label" for="exp-essential">Monthly essential expenses (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-essential" class="input" type="number" min="0" placeholder="40000" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-essential" class="input" type="number" min="0" placeholder="40000" data-amount-words="true" /></div>
             <span class="form-hint">Groceries, utilities, rent</span>
           </div>
           <div class="form-group">
             <label class="form-label" for="exp-lifestyle">Monthly lifestyle &amp; leisure (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-lifestyle" class="input" type="number" min="0" placeholder="15000" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-lifestyle" class="input" type="number" min="0" placeholder="15000" data-amount-words="true" /></div>
           </div>
           <div class="form-group">
             <label class="form-label" for="exp-education">Monthly education expenses (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-education" class="input" type="number" min="0" placeholder="10000" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-education" class="input" type="number" min="0" placeholder="10000" data-amount-words="true" /></div>
           </div>
           <div class="form-group">
             <label class="form-label" for="exp-medical">Monthly medical &amp; wellness (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-medical" class="input" type="number" min="0" placeholder="5000" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-medical" class="input" type="number" min="0" placeholder="5000" data-amount-words="true" /></div>
           </div>
           <div class="form-group">
             <label class="form-label" for="exp-debt">Monthly loan EMIs / debt (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-debt" class="input" type="number" min="0" placeholder="25000" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-debt" class="input" type="number" min="0" placeholder="25000" data-amount-words="true" /></div>
           </div>
           <div class="form-group">
             <label class="form-label" for="exp-other">Other recurring monthly expenses (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-other" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="exp-other" class="input" type="number" min="0" placeholder="0" value="0" data-amount-words="true" /></div>
           </div>
         </div>
       </form>
@@ -417,11 +588,11 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="a-current-value">Current market value (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="a-current-value" class="input" type="number" min="0" placeholder="500000" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="a-current-value" class="input" type="number" min="0" placeholder="500000" data-amount-words="true" /></div>
           </div>
           <div class="form-group">
             <label class="form-label" for="a-annual-contribution">Annual contribution (SIP / annual deposit, ₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="a-annual-contribution" class="input" type="number" min="0" placeholder="0" value="0" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="a-annual-contribution" class="input" type="number" min="0" placeholder="0" value="0" data-amount-words="true" /></div>
           </div>
         </div>
         <button type="submit" class="btn btn-outline mt-4">+ Add Asset Holding</button>
@@ -459,11 +630,11 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="ins-cover">Sum assured / Cover (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="ins-cover" class="input" type="number" min="0" placeholder="15000000" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="ins-cover" class="input" type="number" min="0" placeholder="15000000" data-amount-words="true" /></div>
           </div>
           <div class="form-group">
             <label class="form-label" for="ins-premium">Annual premium (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="ins-premium" class="input" type="number" min="0" placeholder="18000" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="ins-premium" class="input" type="number" min="0" placeholder="18000" data-amount-words="true" /></div>
           </div>
           <div class="form-group">
             <label class="form-label" for="ins-expiry">Policy maturity / expiry year</label>
@@ -505,11 +676,11 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="l-outstanding">Outstanding balance (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="l-outstanding" class="input" type="number" min="0" placeholder="3500000" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="l-outstanding" class="input" type="number" min="0" placeholder="3500000" data-amount-words="true" /></div>
           </div>
           <div class="form-group">
             <label class="form-label" for="l-emi">Monthly EMI (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="l-emi" class="input" type="number" min="0" placeholder="32000" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="l-emi" class="input" type="number" min="0" placeholder="32000" data-amount-words="true" /></div>
           </div>
           <div class="form-group">
             <label class="form-label" for="l-rate">Interest rate (annual %)</label>
@@ -553,7 +724,7 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="g-amount">Target amount in today's rupees (₹)</label>
-            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="g-amount" class="input" type="number" min="0" placeholder="2000000" /></div>
+            <div class="input-prefix-wrap"><span class="input-prefix">₹</span><input id="g-amount" class="input" type="number" min="0" placeholder="2000000" data-amount-words="true" /></div>
           </div>
           <div class="form-group">
             <label class="form-label" for="g-target-year">Target year</label>
@@ -604,6 +775,7 @@ import { api } from '/assets/js/api.js';
 import { requireAuth, renderUserChip, logout } from '/assets/js/auth.js';
 import { formatINR, toast } from '/assets/js/format.js';
 import { renderAppSidebar } from '/assets/js/components/sidebar.js';
+import { attachAmountInWords } from '/assets/js/utils/amountInWords.js';
 
 const user = await requireAuth();
 renderUserChip(user);
@@ -815,8 +987,9 @@ async function loadIncomeAndTax() {
 }
 
 async function saveIncomeAndTax() {
+  const fy = document.getElementById('i-financial-year').value || '2026-27';
   await api.income.save({
-    financialYear: '2026-27',
+    financialYear: fy,
     grossAnnual: document.getElementById('i-gross-salary').value || '0',
     netAnnual: document.getElementById('i-net-salary').value || '0',
     rentalIncome: document.getElementById('i-rental-income').value || '0',
@@ -825,7 +998,7 @@ async function saveIncomeAndTax() {
   });
 
   return api.taxInputs.save({
-    financialYear: '2026-27',
+    financialYear: fy,
     regimeOpted: document.getElementById('i-regime').value,
     section80cDeductions: document.getElementById('t-deduction-80c').value || '0',
     section80dDeductions: document.getElementById('t-deduction-80d').value || '0',
@@ -833,7 +1006,208 @@ async function saveIncomeAndTax() {
     tdsPaid: document.getElementById('t-tds-paid').value || '0'
   });
 }
-document.getElementById('income-form').addEventListener('input', () => scheduleAutosave(saveIncomeAndTax));
+document.getElementById('income-form').addEventListener('input', (e) => {
+  // If user modifies an auto-filled box, show 'Edited' indicator and let the edit stick
+  const target = e.target;
+  if (target && target.dataset.autofilled === 'true') {
+    const parentGrp = target.closest('.form-group');
+    if (parentGrp) {
+      parentGrp.classList.remove('is-autofilled', 'is-autofilled-low');
+      parentGrp.classList.add('is-autofilled-edited');
+      const tagSpan = parentGrp.querySelector('.form16-tag');
+      if (tagSpan) {
+        tagSpan.className = 'label-tag blue form16-tag';
+        tagSpan.textContent = 'Edited';
+      }
+    }
+  }
+  scheduleAutosave(saveIncomeAndTax);
+});
+
+// ── Form 16 Document Upload & Autofill ──────────────────────────────
+const form16FieldsMap = {
+  financial_year: { input: 'i-financial-year', grp: 'grp-financial-year', tag: 'tag-financial-year' },
+  regime_opted: { input: 'i-regime', grp: 'grp-regime', tag: 'tag-regime' },
+  gross_annual_salary: { input: 'i-gross-salary', grp: 'grp-gross-salary', tag: 'tag-gross-salary', cand: 'cand-gross-salary' },
+  net_annual_salary: { input: 'i-net-salary', grp: 'grp-net-salary', tag: 'tag-net-salary', cand: 'cand-net-salary' },
+  section_80c_deductions: { input: 't-deduction-80c', grp: 'grp-deduction-80c', tag: 'tag-deduction-80c', cand: 'cand-deduction-80c' },
+  section_80d_deductions: { input: 't-deduction-80d', grp: 'grp-deduction-80d', tag: 'tag-deduction-80d', cand: 'cand-deduction-80d' },
+  tds_paid: { input: 't-tds-paid', grp: 'grp-tds-paid', tag: 'tag-tds-paid', cand: 'cand-tds-paid' },
+  home_loan_interest_deduction: { input: 't-home-loan-interest', grp: 'grp-home-loan-interest', tag: 'tag-home-loan-interest', cand: 'cand-home-loan-interest' },
+  rental_income: { input: 'i-rental-income', grp: 'grp-rental-income', tag: 'tag-rental-income', cand: 'cand-rental-income' },
+  other_income: { input: 'i-other-income', grp: 'grp-other-income', tag: 'tag-other-income', cand: 'cand-other-income' }
+};
+
+const form16Input = document.getElementById('form16-file-input');
+const form16Dropzone = document.getElementById('form16-dropzone');
+const form16BrowseBtn = document.getElementById('form16-browse-btn');
+const form16Status = document.getElementById('form16-status');
+
+if (form16Dropzone && form16Input) {
+  form16BrowseBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    form16Input.click();
+  });
+
+  form16Dropzone.addEventListener('click', () => form16Input.click());
+
+  form16Dropzone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      form16Input.click();
+    }
+  });
+
+  form16Dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    form16Dropzone.classList.add('dragover');
+  });
+
+  form16Dropzone.addEventListener('dragleave', () => {
+    form16Dropzone.classList.remove('dragover');
+  });
+
+  form16Dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    form16Dropzone.classList.remove('dragover');
+    if (e.dataTransfer?.files?.length) {
+      handleForm16Upload(e.dataTransfer.files[0]);
+    }
+  });
+
+  form16Input.addEventListener('change', () => {
+    if (form16Input.files?.length) {
+      handleForm16Upload(form16Input.files[0]);
+    }
+  });
+}
+
+async function handleForm16Upload(file) {
+  if (!file) return;
+
+  const validExts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp'];
+  const ext = (file.name || '').toLowerCase().slice((file.name || '').lastIndexOf('.'));
+  if (!validExts.includes(ext)) {
+    form16Status.classList.remove('hidden');
+    form16Status.className = 'form16-status-banner error';
+    form16Status.innerHTML = '<div>⚠️ Please upload a Form 16 PDF or an image file (JPG, PNG, WebP).</div>';
+    return;
+  }
+
+  form16Dropzone.classList.add('is-uploading');
+  form16Status.classList.remove('hidden');
+  form16Status.className = 'form16-status-banner info';
+  form16Status.innerHTML = `
+    <div class="flex items-center gap-2">
+      <span class="status-dot animate-pulse">●</span>
+      <span>Reading and extracting fields from <strong>${escHtml(file.name)}</strong>...</span>
+    </div>
+  `;
+
+  try {
+    const res = await api.documents.uploadForm16(file);
+    const extracted = res.extracted || res.data?.extracted || {};
+    const warnings = res.warnings || res.data?.warnings || [];
+    const meta = res.meta || res.data?.meta || {};
+
+    applyForm16ExtractedData(extracted, warnings, meta);
+    toast('Form 16 extracted successfully', 'success');
+  } catch (err) {
+    form16Status.classList.remove('hidden');
+    form16Status.className = 'form16-status-banner error';
+    form16Status.innerHTML = `<div>⚠️ <strong>Could not extract document:</strong> ${escHtml(err.message || 'File could not be parsed')}. You can still fill in your numbers manually below.</div>`;
+    toast(err.message || 'Form 16 upload failed', 'error');
+  } finally {
+    form16Dropzone.classList.remove('is-uploading');
+    form16Input.value = '';
+  }
+}
+
+function applyForm16ExtractedData(extracted, warnings, meta) {
+  const isOcr = meta.source === 'ocr' || meta.isOcr;
+  form16Status.classList.remove('hidden');
+  form16Status.className = isOcr ? 'form16-status-banner warning' : 'form16-status-banner success';
+
+  let bannerHtml = '';
+  if (isOcr) {
+    bannerHtml += `
+      <div>⚠️ <strong>Form 16 Extracted via OCR</strong> — Scanned photo detected. Character recognition is lower confidence — please double-check each highlighted figure below.</div>
+    `;
+  } else {
+    bannerHtml += `
+      <div>✓ <strong>Form 16 Auto-filled</strong> — Extracted from digital TRACES PDF text layer. You can edit any field.</div>
+    `;
+  }
+
+  if (meta.panMasked) {
+    bannerHtml += `<div class="text-sm mt-2">Document PAN: <strong class="text-mono">${escHtml(meta.panMasked)}</strong> (Masked for privacy)</div>`;
+  }
+
+  if (Array.isArray(warnings) && warnings.length > 0) {
+    bannerHtml += `<ul class="form16-warnings-list">`;
+    for (const w of warnings) {
+      bannerHtml += `<li>${escHtml(w)}</li>`;
+    }
+    bannerHtml += `</ul>`;
+  }
+
+  form16Status.innerHTML = bannerHtml;
+
+  // Auto-fill matching boxes
+  for (const [key, mapping] of Object.entries(form16FieldsMap)) {
+    const fieldData = extracted[key];
+    const inputEl = document.getElementById(mapping.input);
+    const grpEl = document.getElementById(mapping.grp);
+    const tagEl = document.getElementById(mapping.tag);
+    const candEl = mapping.cand ? document.getElementById(mapping.cand) : null;
+
+    if (!inputEl) continue;
+
+    if (fieldData && fieldData.value !== undefined && fieldData.value !== null) {
+      inputEl.value = fieldData.value;
+      inputEl.dataset.autofilled = 'true';
+      inputEl.dataset.originalVal = String(fieldData.value);
+
+      grpEl?.classList.remove('is-autofilled', 'is-autofilled-low', 'is-autofilled-edited');
+      if (fieldData.confidence === 'low' || isOcr) {
+        grpEl?.classList.add('is-autofilled-low');
+        if (tagEl) {
+          tagEl.innerHTML = `<span class="label-tag yellow form16-tag" title="Extracted with lower confidence — please verify">⚠️ from Form 16 (Verify)</span>`;
+        }
+      } else {
+        grpEl?.classList.add('is-autofilled');
+        if (tagEl) {
+          tagEl.innerHTML = `<span class="label-tag green form16-tag">from Form 16</span>`;
+        }
+      }
+
+      // Handle candidate values if multiple were detected
+      if (candEl && Array.isArray(fieldData.candidates) && fieldData.candidates.length > 1) {
+        candEl.classList.remove('hidden');
+        candEl.innerHTML = `<span>Found multiple:</span>` + fieldData.candidates.map(c => `
+          <button type="button" class="form16-chip" data-val="${c}">₹${formatINR(c)}</button>
+        `).join('');
+        candEl.querySelectorAll('.form16-chip').forEach(btn => {
+          btn.addEventListener('click', () => {
+            inputEl.value = btn.dataset.val;
+            attachAmountInWords();
+            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+          });
+        });
+      } else if (candEl) {
+        candEl.classList.add('hidden');
+        candEl.innerHTML = '';
+      }
+    }
+    // Fields not present in extracted data are untouched!
+  }
+
+  // Refresh Amount in Words confirmation lines for updated numbers
+  attachAmountInWords();
+
+  // Trigger autosave with the auto-filled numbers
+  scheduleAutosave(saveIncomeAndTax);
+}
 
 async function loadExpenses() {
   try {
@@ -1120,6 +1494,9 @@ await Promise.all([
 // Support ?step=N deep-linking from sidebar navigation
 const _urlStep = parseInt(new URLSearchParams(location.search).get('step'), 10);
 showStep(!isNaN(_urlStep) && _urlStep >= 0 && _urlStep < TOTAL_STEPS ? _urlStep : 0);
+
+// Wire "amount in words" under every ₹ input (incl. dynamically added rows)
+attachAmountInWords();
 </script>
 </body>
 </html>

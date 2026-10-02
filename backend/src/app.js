@@ -23,6 +23,7 @@ import goalsRoutes from './api/goals.routes.js';
 import mfRoutes from './api/mf.routes.js';
 import analysisRoutes from './api/analysis.routes.js';
 import reportRoutes from './api/report.routes.js';
+import documentsRoutes from './api/documents.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -99,6 +100,7 @@ app.use('/api/goals', goalsRoutes);
 app.use('/api/mf', mfRoutes);
 app.use('/api/analysis', analysisLimiter, analysisRoutes);
 app.use('/api/report', reportRoutes);
+app.use('/api/documents', documentsRoutes);
 
 // Static frontend delivery
 const frontendPublic = path.resolve(__dirname, '../../frontend/public');
